@@ -13,7 +13,7 @@ export default function HomeScreen() {
       }>
 
       <Text style={{color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24}}>Gaziantep Kart</Text>
-        
+      
     </ParallaxScrollView>
   );
 }
