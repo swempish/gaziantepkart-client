@@ -6,4 +6,6 @@ React Native (expo) ile yaptığım Gaziantep Kart client'ı.
 
 Özellikler:
 - Bakiye sorgulama
+- Son kullanım / son yükleme
+- Bakiyeden kalan biniş hakkı hesaplama
 - Duyurular

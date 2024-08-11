@@ -132,7 +132,7 @@ export default function HomeScreen() {
         />
       }>
 
-      <View style={{ maxWidth: "70%", width: "100%", marginHorizontal: "auto" }}>
+      <View style={{ width: "100%", marginHorizontal: "auto" }}>
         <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Gaziantep Kart</Text>
         <Text style={{ color: 'white', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>Duyurular</Text>
 
@@ -176,6 +176,11 @@ export default function HomeScreen() {
               <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Bakiye</Text>
                 <Text style={{ color: '#388E3C', textAlign: 'center', fontWeight: 'bold', fontSize: 24 }}>₺ {response['cardlist']![0]['balance']}</Text>
+              </View>
+
+              <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
+                <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Kalan Kullanım</Text>
+                <Text style={{ color: '#388E3C', textAlign: 'center', fontWeight: 'bold', fontSize: 24 }}>{Math.floor(response['cardlist']![0]['balance'] / response['cardlist']![0]['usage'][0]["amt"])} Biniş</Text>
               </View>
 
               <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
