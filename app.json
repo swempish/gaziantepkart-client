@@ -35,6 +35,8 @@
     },
     "extra": {
       "router": {
+        "path": "tabs",
+        "defaultScreen": "index",
         "origin": false
       },
       "eas": {
@@ -44,3 +46,4 @@
     "owner": "emirhancolak"
   }
 }
+
