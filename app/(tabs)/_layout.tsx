@@ -13,6 +13,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarStyle: {
           height: 60,
+          display: 'none',
         },
         headerStyle: {
           marginBottom: 20,
