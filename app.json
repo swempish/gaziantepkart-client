@@ -35,15 +35,14 @@
     },
     "extra": {
       "router": {
+        "origin": false,
         "path": "tabs",
-        "defaultScreen": "index",
-        "origin": false
+        "defaultScreen": "index"
       },
       "eas": {
-        "projectId": "50cada74-eded-42a5-8919-188f75353b13"
+        "projectId": "a3c9b5d4-ca7f-4529-ab55-9c5346979388"
       }
     },
     "owner": "emirhancolak"
   }
 }
-
