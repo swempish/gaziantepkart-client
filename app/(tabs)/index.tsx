@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Platform, View, Text, TextInput, Button } from 'react-native';
-import { ActivityIndicator } from "react-native";
-import ParallaxScrollView from '@/components/ParallaxScrollView';
+import { Image, StyleSheet, Platform, View, Text, TextInput, Button, ActivityIndicator, ScrollView, Pressable } from 'react-native';
+import Modal from "react-native-modal";
 import { MaskedTextInput } from "react-native-mask-text";
-import { ScrollView } from "react-native-gesture-handler";
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  SafeAreaView,
+  SafeAreaProvider,
+  SafeAreaInsetsContext,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
 
 export default function HomeScreen() {
   const [maskedValue, setMaskedValue] = useState("");
@@ -13,6 +19,8 @@ export default function HomeScreen() {
   const [response, setResponse] = useState({ "cardlist": null });
 
   const [duyurular, setDuyurular] = useState();
+
+  const [mevcutDuyuru, setMevcutDuyuru] = useState();
 
   function kartSorgula(kartNumarası: string) {
 
@@ -57,7 +65,7 @@ export default function HomeScreen() {
         }
       })
       .then(data => {
-        
+
         if (data.result.code == 33) {
           alert(data.result.message);
         }
@@ -71,7 +79,7 @@ export default function HomeScreen() {
       });
   }
 
-  function duyurularıGetir(){
+  function duyurularıGetir() {
     let url = "https://service.kentkart.com/rl1/api/info/announce"
     let params = {
       "region": "028",
@@ -113,43 +121,62 @@ export default function HomeScreen() {
       .catch(error => {
         console.error(error);
       });
-    
+
   }
 
   useEffect(() => {
     duyurularıGetir();
   }, []);
 
-  
+  const [isModalVisible, setModalVisible] = useState(false);
+
+  const toggleModal = () => {
+    setModalVisible(!isModalVisible);
+  };
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
+
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'black' }}>
+      <ScrollView style={{ width: "100%", marginHorizontal: "auto" }}>
+
         <Image
           source={require('@/assets/images/gaziantep.jpg')}
-          style={{ resizeMode: 'cover', height: 250, width: '100%' }}
+          style={{ resizeMode: 'cover', height: 250, width: '100%', }}
         />
-      }>
+        <View style={{ position: 'absolute', height: 250, width: '100%', }}>
+          <LinearGradient
+            // Background Linear Gradient
+            colors={['transparent', 'rgba(0,0,0,1)']}
+            style={{ height: 250, width: '100%' }}
+            end={{ x: 0.5, y: 1 }}
+          />
+        </View>
 
-      <View style={{ width: "100%", marginHorizontal: "auto" }}>
-        <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Gaziantep Kart</Text>
-        <Text style={{ color: 'white', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>Duyurular</Text>
+        <Modal isVisible={isModalVisible}>
+          <View style={{ flex: 1, backgroundColor: '#000', borderRadius: 5, padding: 10 }}>
+            <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 20, marginBottom: 10 }}>{mevcutDuyuru?.title}</Text>
+            <Text style={{ color: 'white', textAlign: 'left', fontSize: 16, marginBottom: 20 }}>{mevcutDuyuru?.description}</Text>
 
-        <ScrollView horizontal style={{ flex: 1, flexDirection: 'row', borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 150, marginBottom: 20 }}>
-          
+            <Button title="Kapat" onPress={toggleModal} />
+          </View>
+        </Modal>
+        <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 30, paddingLeft: 10, paddingTop: 10 }}>Emir's GaziantepKart</Text>
+        <Text style={{ color: 'white', textAlign: 'left', fontSize: 12, fontStyle: 'italic', paddingLeft: 10, fontWeight: 'bold', marginBottom: 10 }}>"Ben daha iyisini yaparım."</Text>
+
+        <ScrollView horizontal style={{ flex: 1, flexDirection: 'row', borderRadius: 5, padding: 10, minHeight: 200, marginBottom: 20 }}>
+
           {
             duyurular != null ?
-            (duyurular?.map((item, index) => (
-              <View key={index} style={{ margin: 10, padding: 10, borderColor: 'gray', borderWidth: 1, borderRadius: 5, maxWidth: 500, width: '100%' }}>
-                <Text numberOfLines={1} style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>{item.title}</Text>
-                <Text style={{ color: 'white', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>{item.description}</Text>
-              </View>
-            ))) : <ActivityIndicator style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} size="large" color="white" />
+              (duyurular?.map((item, index) => (
+                <Pressable onPress={() => { setMevcutDuyuru(item); toggleModal(); }} key={index} style={{ margin: 10, padding: 10, borderColor: 'gray', borderWidth: 1, borderRadius: 3, maxWidth: 300, width: '100%' }}>
+                  <Text numberOfLines={1} style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>{item.title}</Text>
+                  <Text style={{ color: '#a0a0a0', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>{item.description}</Text>
+                </Pressable>
+              ))) : <ActivityIndicator style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} size="large" color="white" />
           }
-          
+
         </ScrollView>
-        
+
         <View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100 }}>
           <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Bakiye sorgula</Text>
           <MaskedTextInput mask="99999-99999-9" onChangeText={(text, rawText) => { setMaskedValue(text); setUnmaskedValue(rawText); }} keyboardType='numeric' placeholder="Kart numarası. Örn. 12345-12345-1" style={{ color: 'black', textAlign: 'left', fontSize: 15, backgroundColor: 'white', height: 40, borderRadius: 5, marginVertical: 10, paddingHorizontal: 10 }} />
@@ -165,31 +192,31 @@ export default function HomeScreen() {
 
         {
           (response["cardlist"] && !proccessing) &&
-          <View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100, flexDirection: 'column', justifyContent: 'space-between' }}>
+          <View style={{ marginTop: 20, flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100, flexDirection: 'column', justifyContent: 'space-between' }}>
             <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Kart bilgileri</Text>
             <View style={{ flexDirection: 'column', justifyContent: 'space-between', gap: 10, marginTop: 10 }}>
-              <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
+              <View style={{  padding: 10, minHeight: 100 }}>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Kart Numarası</Text>
                 <Text style={{ color: '#0a7ea4', textAlign: 'center', fontWeight: 'bold', fontSize: 24 }}>{maskedValue}</Text>
               </View>
 
-              <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
+              <View style={{  padding: 10, minHeight: 100 }}>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Bakiye</Text>
                 <Text style={{ color: '#388E3C', textAlign: 'center', fontWeight: 'bold', fontSize: 24 }}>₺ {response['cardlist']![0]['balance']}</Text>
               </View>
 
-              <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
+              <View style={{  padding: 10, minHeight: 100 }}>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Kalan Kullanım</Text>
                 <Text style={{ color: '#388E3C', textAlign: 'center', fontWeight: 'bold', fontSize: 24 }}>{Math.floor(response['cardlist']![0]['balance'] / response['cardlist']![0]['usage'][0]["amt"])} Biniş</Text>
               </View>
 
-              <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
+              <View style={{  padding: 10, minHeight: 100 }}>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Son Kullanım Tarihi</Text>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 24, marginTop: 10 }}>{response['cardlist']![0]['usage'][0]["date"]}</Text>
                 <Text style={{ color: 'red', textAlign: 'center', fontWeight: 'bold', fontSize: 20 }}>₺ {response['cardlist']![0]['usage'][0]["amt"]}</Text>
               </View>
 
-              <View style={{ borderWidth: 1, borderColor: 'white', borderRadius: 5, padding: 10, minHeight: 100 }}>
+              <View style={{  padding: 10, minHeight: 100 }}>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Son Yükleme Tarihi</Text>
                 <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 24, marginTop: 10 }}>{response['cardlist']![0]['usage'][1]["date"]}</Text>
                 <Text style={{ color: 'green', textAlign: 'center', fontWeight: 'bold', fontSize: 20 }}>₺ {response['cardlist']![0]['usage'][1]["amt"]}</Text>
@@ -197,9 +224,12 @@ export default function HomeScreen() {
             </View>
           </View>
         }
-      </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </SafeAreaView>
 
 
-    </ParallaxScrollView>
   );
 }
+
