@@ -18,6 +18,7 @@ Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımlar
 ## Özellikler
 
 - [x] Bakiye sorgulama
+- [x] Tarifeler listesi
 - [x] Son kullanımları görüntüleme
 - [x] Kalan kullanım hesaplama
 - [x] Duyuruları görüntüleme
