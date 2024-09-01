@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, Platform, View, Text, TextInput, Button, ActivityIndicator, ScrollView, Pressable } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import { MaskedTextInput } from "react-native-mask-text";
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +10,7 @@ import {
   SafeAreaInsetsContext,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { router } from "expo-router";
 
 
 export default function HomeScreen() {
@@ -18,15 +20,34 @@ export default function HomeScreen() {
   const [proccessing, setProcessing] = useState(false);
   const [response, setResponse] = useState({ "cardlist": null, "clientMeta": null });
 
-  const [duyurular, setDuyurular] = useState();
+  const [duyurular, setDuyurular] = useState([{"title": "", "description": ""}]);
 
   const [tarifeler, setTarifeler] = useState({"clientMeta": {"öğrenci": 0,"tam": 0}});
 
-  const [mevcutDuyuru, setMevcutDuyuru] = useState();
+  const [mevcutDuyuru, setMevcutDuyuru] = useState({"description": "", "title": ""});
 
-  function kartSorgula(kartNumarası: string) {
+  var apiKey = null;
 
+  async function girişBilgileriniKontrolEt(){
+    try {
+      const value = await AsyncStorage.getItem('apiKey');
+      if (value !== null) {
+        return true;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function kartSorgula(kartNumarası: string) {
     setProcessing(true);
+    let isLoggedIn = await girişBilgileriniKontrolEt();
+    if (!isLoggedIn) {
+      setProcessing(false);
+      router.replace('/login');
+      return;
+    }
+    
 
     let url = "https://service.kentkart.com/rl1/api/card/balance"
     let params = {
@@ -216,8 +237,6 @@ export default function HomeScreen() {
         }
       }
       
-
-      console.log(JSON.stringify(temizData, null, 4));
       setTarifeler(temizData);
     })
     .catch(error => {
@@ -276,8 +295,8 @@ export default function HomeScreen() {
             duyurular != null ?
               (duyurular?.map((item, index) => (
                 <Pressable onPress={() => { setMevcutDuyuru(item); toggleModal(); }} key={index} style={{ margin: 10, padding: 10, borderColor: 'gray', borderWidth: 1, borderRadius: 3, maxWidth: 300, width: '100%' }}>
-                  <Text numberOfLines={1} style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>{item.title}</Text>
-                  <Text style={{ color: '#a0a0a0', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>{item.description}</Text>
+                  <Text numberOfLines={1} style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>{item?.title}</Text>
+                  <Text style={{ color: '#a0a0a0', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>{item?.description}</Text>
                 </Pressable>
               ))) : <ActivityIndicator style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} size="large" color="white" />
           }
