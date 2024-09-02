@@ -5,8 +5,6 @@
 
 # Gaziantep Kart Client
 
-**⚠️ HENÜZ GENEL KULLANIMA UYGUN DEĞİL**
-
 Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımları görüntüleme, bakiye bazlı kalan kullanım hesaplama ve duyuruları görüntüleme gibi özellikler sunan bir React Native Expo uygulamasıdır.
 
 **⚠️ UYARI:** Bu proje eğitim ve kişisel kullanım amaçlı olarak geliştirilmiştir. Herhangi bir yasa dışı kullanım durumunda sorumluluk kabul edilmemektedir.
