@@ -21,6 +21,7 @@ Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımlar
 ## Özellikler
 
 - [x] Bakiye sorgulama
+- [x] Bekleyen dolumları görme
 - [x] Tarifeler listesi
 - [x] Giriş yapma
 - [x] Son kullanımları görüntüleme
@@ -60,7 +61,7 @@ Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımlar
 
 ## Yapılacaklar
 
-- [ ] Giriş sistemi ekleme
+- [x] Giriş sistemi ekleme
 - [ ] Kart kaydetme
 - [ ] Kart'ı favoriye ekleme
 - [ ] Kullanıcı dostu arayüz ve tasarım iyileştirmeleri
