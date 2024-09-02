@@ -45,12 +45,7 @@ Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımlar
     ```bash
     npm install
     ```
-3. `kentkart.com` sitesinde hesabınıza giriş yapın ve tarayıcının geliştirici seçeneklerinden API token'ınızı bulun. (İleride doğrudan giriş sistemi eklenecektir.)
-4. Bir `.env` dosyası oluşturun ve şu şekilde API token'ınızı kaydedin:
-    ```env
-    EXPO_PUBLIC_API_TOKEN=your_token_here
-    ```
-5. Expo projeyi başlatın:
+3. Expo projeyi başlatın:
     ```bash
     npx expo start
     ```
