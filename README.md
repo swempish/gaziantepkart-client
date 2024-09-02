@@ -11,12 +11,17 @@ Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımlar
 
 ## İçindekiler
 
+- [Yükle](#yükle)
 - [Özellikler](#özellikler)
+- [Ekran Fotoğrafları](#fotoğraflar)
 - [Gereksinimler](#gereksinimler)
 - [Kurulum](#kurulum)
 - [Kullanım](#kullanım)
 - [Yapılacaklar](#yapılacaklar)
 - [Lisans](#lisans)
+
+## Yükle
+Uygulamanın en son versiyonunu indirmek için [buraya](https://github.com/swempish/gaziantepkart-client/releases/latest) tıklayabilirsiniz. Oradan APK dosyasını indirip kurulumu yapın.
 
 ## Özellikler
 
@@ -27,6 +32,10 @@ Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımlar
 - [x] Son kullanımları görüntüleme
 - [x] Kalan kullanım hesaplama
 - [x] Duyuruları görüntüleme
+
+## Fotoğraflar
+<img src="https://github.com/user-attachments/assets/2e408e69-218b-4abc-aa02-f259d6c1ee2d" width="300">
+<img src="https://github.com/user-attachments/assets/af462510-53ee-48d4-8eb5-75a92ac4838e" width="300">
 
 ## Gereksinimler
 
