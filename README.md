@@ -1,5 +1,5 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/swempish/gaziantepkart-client)
-![Visitors](https://vbr.nathanchung.dev/badge?page_id=swempish.insta-dm-ai-bot)
+![Visitors](https://vbr.nathanchung.dev/badge?page_id=swempish.gaziantepkart-client)
 ![GitHub Release](https://img.shields.io/github/v/release/swempish/gaziantepkart-client)
 ![GitHub Repo stars](https://img.shields.io/github/stars/swempish/gaziantepkart-client)
 
