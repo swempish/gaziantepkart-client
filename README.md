@@ -84,3 +84,6 @@ Projeyi kullanırken, orijinal yazar **Emirhan Çolak** ([GitHub: swempish](http
 
 Lisansın tam metnini [buradan](./LICENSE) görüntüleyebilirsiniz.
 
+
+Anahtar kelimeler
+kentkart, kentkart api, kentkart api key, kentkart geliştirici, kentkart github, kentkart javascript, gaziantep kart, gazikart, gazikart api, gazikart javascript, gazikart indir, gaziantep kart indir
