@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Platform, View, Text, TextInput, Button, ActivityIndicator, ScrollView, Pressable } from 'react-native';
+import { Image, StyleSheet, Platform, View, Text, TextInput, Button, ActivityIndicator, ScrollView, Pressable, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import { MaskedTextInput } from "react-native-mask-text";
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  SafeAreaView,
-  SafeAreaProvider,
-  SafeAreaInsetsContext,
-  useSafeAreaInsets,
+  SafeAreaView
 } from 'react-native-safe-area-context';
 import { router } from "expo-router";
 
 
 export default function HomeScreen() {
+  const pkg = require('../../package.json');
+
   const [maskedValue, setMaskedValue] = useState("");
   const [unMaskedValue, setUnmaskedValue] = useState("");
 
@@ -25,6 +24,8 @@ export default function HomeScreen() {
   const [tarifeler, setTarifeler] = useState({ "clientMeta": { "öğrenci": 0, "tam": 0 } });
 
   const [mevcutDuyuru, setMevcutDuyuru] = useState({ "description": "", "title": "" });
+  const [güncellemeNotu, setGüncellemeNotu] = useState({ "description": "", "title": "", "url": "" });
+
   var kullanıcıProfili = {
     "isim": "",
     "soyisim": "",
@@ -36,7 +37,24 @@ export default function HomeScreen() {
   const [profil, setProfilDetayları] = useState(kullanıcıProfili);
   var apiKey = null;
 
+  // TODO: KART KAYDETME FONKSIYONUNU EKLE
+  async function kartKaydet(kartNumarası: string) {
+    kartNumarası = kartNumarası.trim().replace(" ", "").replace("-", "");
 
+  }
+  async function uygulamaGüncellemeleriniDenetle() {
+    let response = await fetch("https://api.github.com/repos/swempish/gaziantepkart-client/releases/latest");
+    let data = await response.json();
+    let mevcutSürüm = data.tag_name;
+    let yerelSürüm = pkg.version;
+    
+    if (yerelSürüm !== null && yerelSürüm.trim().replace("v", "") !== mevcutSürüm.trim().replace("v", "")) {
+      setGüncellemeNotu({"title": "Uygulamanın yeni sürümü var!", "description": `Yeni sürüm: ${mevcutSürüm}\nYüklü sürüm: v${yerelSürüm}\nGüncelleme notları:\n\n${data.body}`, "url": `${data.assets[0].browser_download_url}`});
+      setUpdateModalVisible(true);
+    } else {
+    }
+    
+  }
 
   async function girişBilgileriniKontrolEt() {
     try {
@@ -144,6 +162,7 @@ export default function HomeScreen() {
             return response.json();
           } else {
             alert("Geçerli bir kart numarası giriniz.");
+
           }   
       })
       .then(data => {
@@ -172,7 +191,6 @@ export default function HomeScreen() {
         setProcessing(false);
       });
   }
-
   function duyurularıGetir() {
     let url = "https://service.kentkart.com/rl1/api/info/announce"
     let params = {
@@ -306,11 +324,13 @@ export default function HomeScreen() {
       await girişBilgileriniKontrolEt();
       await duyurularıGetir();
       await tarifeleriGetir();
+      await uygulamaGüncellemeleriniDenetle();
     }
     fetchData();
   }, []);
 
   const [isModalVisible, setModalVisible] = useState(false);
+  const [isUpdateModalVisible, setUpdateModalVisible] = useState(false);
 
   const toggleModal = () => {
     setModalVisible(!isModalVisible);
@@ -335,13 +355,27 @@ export default function HomeScreen() {
         </View>
 
         <Modal isVisible={isModalVisible}>
-          <View style={{ flex: 1, backgroundColor: '#000', borderRadius: 5, padding: 10 }}>
-            <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 20, marginBottom: 10 }}>{mevcutDuyuru?.title}</Text>
-            <Text style={{ color: 'white', textAlign: 'left', fontSize: 16, marginBottom: 20 }}>{mevcutDuyuru?.description}</Text>
+          <View style={{ backgroundColor: '#fff', borderRadius: 5, padding: 12, }}>
+            <Text style={{ color: 'black', textAlign: 'center', fontWeight: 'bold', fontSize: 22, marginBottom: 10 }}>{mevcutDuyuru?.title}</Text>
+            <View style={{ height: 1, backgroundColor: 'black', marginBottom: 10 }}></View>
+            <Text style={{ color: 'black', textAlign: 'left', fontSize: 16, marginBottom: 20 }}>{mevcutDuyuru?.description}</Text>
 
             <Button title="Kapat" onPress={toggleModal} />
           </View>
         </Modal>
+
+        <Modal isVisible={isUpdateModalVisible}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 5, padding: 12, }}>
+            <Text style={{ color: 'black', textAlign: 'center', fontWeight: 'bold', fontSize: 22, marginBottom: 10 }}>{güncellemeNotu?.title}</Text>
+            <View style={{ height: 1, backgroundColor: 'black', marginBottom: 10 }}></View>
+            <Text style={{ color: 'black', textAlign: 'left', fontSize: 16, marginBottom: 20 }}>{güncellemeNotu?.description}</Text>
+
+            <Button title="İNDİR" color={'green'} onPress={() => { Linking.openURL(güncellemeNotu?.url); }} />
+            <View style={{ marginBottom: 10 }}></View>
+            <Button title="Kapat" onPress={() => setUpdateModalVisible(false)} />
+          </View>
+        </Modal>
+
         <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 30, paddingLeft: 10, paddingTop: 10 }}>Emir's GaziantepKart</Text>
         <Text style={{ color: 'white', textAlign: 'left', fontSize: 12, fontStyle: 'italic', paddingLeft: 10, fontWeight: 'bold', marginBottom: 10 }}>"Ben daha iyisini yaparım."</Text>
 
@@ -368,7 +402,7 @@ export default function HomeScreen() {
               (duyurular?.map((item, index) => (
                 <Pressable onPress={() => { setMevcutDuyuru(item); toggleModal(); }} key={index} style={{ margin: 10, padding: 10, borderColor: 'gray', borderWidth: 1, borderRadius: 3, maxWidth: 300, width: '100%' }}>
                   <Text numberOfLines={1} style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>{item?.title}</Text>
-                  <Text style={{ color: '#a0a0a0', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>{item?.description}</Text>
+                  <Text style={{ color: '#afafa0', textAlign: 'left', fontSize: 15, fontWeight: 'bold', marginBottom: 10 }}>{item?.description}</Text>
                 </Pressable>
               ))) : <ActivityIndicator style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} size="large" color="white" />
           }
@@ -383,11 +417,16 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/**<View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100, marginBottom: 10 }}>
+        {/**
+         * TODO: Kaydetme fonksiyonunu ekle
+         * 
+        <View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100, marginBottom: 10 }}>
           <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Kart Kaydet</Text>
           <MaskedTextInput mask="99999-99999-9" onChangeText={(text, rawText) => { setMaskedValue(text); setUnmaskedValue(rawText); }} keyboardType='numeric' placeholder="Kart numarası. Örn. 12345-12345-1" style={{ color: 'black', textAlign: 'left', fontSize: 15, backgroundColor: 'white', height: 40, borderRadius: 5, marginVertical: 10, paddingHorizontal: 10 }} />
           <Button title="Sorgula" onPress={() => kartKaydet(unMaskedValue)} />
-        </View>*/}
+        </View>
+        *
+        */}
 
         <View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100 }}>
           <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Bakiye sorgula</Text>
