@@ -14,6 +14,13 @@ import { router } from "expo-router";
 
 
 export default function HomeScreen() {
+  const pkg = require('../../package.json');
+
+  const useragent = "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600";
+
+  // Yazı kutucuğu değerleri
+  const [kaydedilecekKartNumarası, setKaydedilecekKartNumarası] = useState("");
+
   const [maskedValue, setMaskedValue] = useState("");
   const [unMaskedValue, setUnmaskedValue] = useState("");
 
@@ -23,6 +30,8 @@ export default function HomeScreen() {
   const [duyurular, setDuyurular] = useState([{ "title": "", "description": "" }]);
 
   const [tarifeler, setTarifeler] = useState({ "clientMeta": { "öğrenci": 0, "tam": 0 } });
+
+  const [kartlar, setKartlar] = useState({});
 
   const [mevcutDuyuru, setMevcutDuyuru] = useState({ "description": "", "title": "" });
   var kullanıcıProfili = {
@@ -36,8 +45,63 @@ export default function HomeScreen() {
   const [profil, setProfilDetayları] = useState(kullanıcıProfili);
   var apiKey = null;
 
+  // TODO: KART KAYDETME FONKSIYONUNU EKLE
+  async function kartKaydet(kartNumarası: string) {
+    if (kartNumarası.trim() == "") {
+      alert("Lütfen kart numarasını giriniz.");
+    }
+    kartNumarası = kartNumarası.trim().replace(" ", "").replace("-", "");
+    let kartGeçerliMi = await kartNumarasınıKontrolEt(kartNumarası);
+    if (!kartGeçerliMi) {
+      alert("Girdiğiniz kart numarası geçersiz.");
+      return;
+    }
+    var kaydedilenKartNumaraları = await AsyncStorage.getItem('kaydedilenKartNumaraları');
+    if (kaydedilenKartNumaraları == null) {
+      kaydedilenKartNumaraları = "";
+    }
 
+    // Kart daha önce kaydedilmiş mi kontrol et
+    if (kaydedilenKartNumaraları.includes("," + kartNumarası)) {
+      alert("Bu kart numarası daha once kaydedilmiş.");
+    } else {
+      await AsyncStorage.setItem('kaydedilenKartNumaraları', kaydedilenKartNumaraları + "," + kartNumarası);
+      alert("Kart numarası kaydedildi.");
+    }
+  }
+  
+  /**
+   * Uygulamanın yeni sürümünü denetler ve güncelleme modalını gösterir.
+   * 
+   * Fetch ile GitHub API'sinden en son yayınlanan sürümün bilgilerini alır.
+   * Sonra, yerelde yüklü olan sürümüyle kıyaslar. Eğer yerelde yüklü olan sürüm daha eskiyse,
+   * güncelleme modalını gösterir ve GitHub'dan alınan son sürüm bilgilerini modalın içeriğine yazar.
+   * 
+   * @returns {void}
+   */
+  async function uygulamaGüncellemeleriniDenetle() {
+    let response = await fetch("https://api.github.com/repos/swempish/gaziantepkart-client/releases/latest");
+    let data = await response.json();
+    let mevcutSürüm = data.tag_name;
+    let yerelSürüm = pkg.version;
+    
+    if (yerelSürüm !== null && yerelSürüm.trim().replace("v", "") !== mevcutSürüm.trim().replace("v", "")) {
+      setGüncellemeNotu({"title": "Uygulamanın yeni sürümü var!", "description": `Yeni sürüm: ${mevcutSürüm}\nYüklü sürüm: v${yerelSürüm}\nGüncelleme notları:\n\n${data.body}`, "url": `${data.assets[0].browser_download_url}`});
+      setUpdateModalVisible(true);
+    } else {
+    }
+    
+  }
 
+  /**
+   * Uygulamaya giriş yapmış olan kullanıcı için profil bilgilerini
+   * kontrol eder. Eğer giriş yapılmış ise, profil bilgilerini
+   * getirir ve kullanıcı profilini günceller. Eğer giriş yapılmamış
+   * ise, kullanıcıyı giriş sayfasına yönlendirir.
+   * 
+   * @returns {boolean} Giriş yapılmış ise true, giriş yapılmamış
+   * ise false döner.
+   */
   async function girişBilgileriniKontrolEt() {
     try {
       let value = await AsyncStorage.getItem('apiKey');
@@ -86,6 +150,11 @@ export default function HomeScreen() {
     }
   }
 
+/**
+ * Kart numarasını girerek bakiye, bekleyen dolum, son kullanımları görüntüleme
+ * @param {string} kartNumarası - Kentkart kart numarası
+ * @returns {Promise<void>}
+ */
   async function kartSorgula(kartNumarası: string) {
     if (kartNumarası.trim() == "") {
       alert("Lütfen kart numarasını giriniz.");
@@ -99,7 +168,7 @@ export default function HomeScreen() {
     }
     setResponse({ "cardlist": null, "clientMeta": null });
 
-
+ 
     let url = "https://service.kentkart.com/rl1/api/card/balance"
     let params = {
       "region": "028",
@@ -112,7 +181,7 @@ export default function HomeScreen() {
     let apiKey = await AsyncStorage.getItem('apiKey');
 
     let headers = {
-      "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600",
+      "User-Agent": useragent,
       "Accept": "application/json, text/plain, */*",
       "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
       "Content-Type": "application/json",
@@ -173,6 +242,79 @@ export default function HomeScreen() {
       });
   }
 
+
+
+
+  /**
+   * Kart numarasını kontrol eder. Eğer kart numarası geçerli ise,
+   * kartın bilgilerini getirir. Eğer kart numarası geçersiz ise,
+   * false döner.
+   * 
+   * @param {string} kartNumarası Kontrol edilecek kart numarası
+   * @returns {boolean|object} Kart numarası geçerli ise, kartın
+   * bilgilerini döner. Kart numarası geçersiz ise, false döner.
+   */
+  async function kartNumarasınıKontrolEt(kartNumarası: string) {
+    setProcessing(true);
+    let isLoggedIn = await girişBilgileriniKontrolEt();
+    if (!isLoggedIn) {
+      setProcessing(false);
+      return false;
+    }
+    let url = "https://service.kentkart.com/rl1/api/card/balance"
+    let params = {
+      "region": "028",
+      "version": "Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart",
+      "lang": "tr",
+      "authType": "4",
+      "alias": String(kartNumarası)
+    }
+
+    let apiKey = await AsyncStorage.getItem('apiKey');
+
+    let headers = {
+      "User-Agent": useragent,
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-site",
+      "referrer": "https://m.kentkart.com/",
+    }
+
+    // Create the URL with query parameters
+    let urlWithParams = new URL(url);
+    for (const [key, value] of Object.entries(params)) {
+      urlWithParams.searchParams.append(key, value);
+    }
+
+    var validityAndData = false;
+    try {
+      let response = await fetch(urlWithParams, {
+        method: 'GET',
+        headers: headers
+      });
+      if (response.ok) {
+        let data = await response.json();
+        setProcessing(false);
+        validityAndData = data.cardlist[0];
+      } else {
+        alert("Geçerli bir kart numarası giriniz.");
+      }
+    } catch (error) {
+      alert("Kart bilgilerinizi kontrol ediniz.");
+      setProcessing(false);
+    }
+    return validityAndData;
+  }
+
+  /**
+   * Gaziantep Kentkart sisteminde duyuruları getirir.
+   *
+   * @returns {Promise<void>}
+   */
   function duyurularıGetir() {
     let url = "https://service.kentkart.com/rl1/api/info/announce"
     let params = {
@@ -182,7 +324,7 @@ export default function HomeScreen() {
     }
 
     let headers = {
-      "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600",
+      "User-Agent": useragent,
       "Accept": "application/json, text/plain, */*",
       "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
       "Content-Type": "application/json",
@@ -218,6 +360,11 @@ export default function HomeScreen() {
 
   }
 
+/**
+ * Gaziantep Kentkart sisteminde tarifeleri getirir.
+ *
+ * @returns {Promise<void>}
+ */
   async function tarifeleriGetir() {
     let url = "https://service.kentkart.com/rl1//api/info/tariff"
     let params = {
@@ -227,7 +374,7 @@ export default function HomeScreen() {
     }
 
     let headers = {
-      "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600",
+      "User-Agent": useragent,
       "Accept": "application/json, text/plain, */*",
       "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
       "Content-Type": "application/json",
@@ -308,6 +455,19 @@ export default function HomeScreen() {
       await tarifeleriGetir();
     }
     fetchData();
+
+    async function kayıtlıKartlarıGetir() {
+      let kartListesi = await AsyncStorage.getItem('kaydedilenKartNumaraları');
+      let kartListesiArray = kartListesi ? kartListesi.split(',').filter(x => x) : [];
+
+      kartListesiArray.forEach(element => {
+        kartlar[element] = kartNumarasınıKontrolEt(element);
+      });
+ 
+      setKartlar(kartlar);
+    }
+
+    kayıtlıKartlarıGetir();
   }, []);
 
   const [isModalVisible, setModalVisible] = useState(false);
@@ -383,16 +543,27 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/**<View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100, marginBottom: 10 }}>
+        {
+          (kartlar != null && kartlar.length != 0) &&
+          <ScrollView horizontal style={{ flex: 1, flexDirection: 'row', borderRadius: 5, padding: 10, minHeight: 200 }}>
+            <View style={{ flex: 1, margin: 10, padding: 10, borderColor: 'gray', borderWidth: 1, borderRadius: 3, minWidth: 300, width: '100%', marginRight: 15 }}>
+              <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Kart 1</Text>
+              <Text style={{ color: '#afafa0', textAlign: 'left', fontSize: 15 }}>12345-12345-1</Text>
+              <Text style={{ color: '#afafa0', textAlign: 'left', fontSize: 15 }}>100 TL</Text>
+            </View>
+          </ScrollView>
+        }
+
+        <View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100, marginBottom: 15 }}>
           <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Kart Kaydet</Text>
-          <MaskedTextInput mask="99999-99999-9" onChangeText={(text, rawText) => { setMaskedValue(text); setUnmaskedValue(rawText); }} keyboardType='numeric' placeholder="Kart numarası. Örn. 12345-12345-1" style={{ color: 'black', textAlign: 'left', fontSize: 15, backgroundColor: 'white', height: 40, borderRadius: 5, marginVertical: 10, paddingHorizontal: 10 }} />
-          <Button title="Sorgula" onPress={() => kartKaydet(unMaskedValue)} />
-        </View>*/}
+          <TextInput onChangeText={(text: string) => {setKaydedilecekKartNumarası(text)}} keyboardType='numeric' placeholder="Kart numarası. Örn. 12345-12345-1" style={{ color: 'black', textAlign: 'left', fontSize: 15, backgroundColor: 'white', height: 40, borderRadius: 5, marginVertical: 10, paddingHorizontal: 10 }} />
+          <Button disabled={proccessing} title="Kaydet" onPress={() => kartKaydet(kaydedilecekKartNumarası)} />
+        </View>
 
         <View style={{ flex: 1, borderColor: 'gray', borderWidth: 1, borderRadius: 5, padding: 10, minHeight: 100 }}>
           <Text style={{ color: 'white', textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>Bakiye sorgula</Text>
           <MaskedTextInput mask="99999-99999-9" onChangeText={(text, rawText) => { setMaskedValue(text); setUnmaskedValue(rawText); }} keyboardType='numeric' placeholder="Kart numarası. Örn. 12345-12345-1" style={{ color: 'black', textAlign: 'left', fontSize: 15, backgroundColor: 'white', height: 40, borderRadius: 5, marginVertical: 10, paddingHorizontal: 10 }} />
-          <Button title="Sorgula" onPress={() => kartSorgula(unMaskedValue)} />
+          <Button disabled={proccessing} title="Sorgula" onPress={() => kartSorgula(unMaskedValue)} />
         </View>
 
         {
