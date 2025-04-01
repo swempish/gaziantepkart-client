@@ -5,7 +5,10 @@
 
 
 
-# Gaziantep Kart Client
+# Gaziantep Kart Client [BOZUK]
+
+## Bu proje arşivlendi. **Neden?**
+KentKart, giriş yapma kısmına SMS doğrulaması eklemiş bu nedenle uygulamanın giriş yapma kısmı çalışmıyor. Tabi giriş yapamayınca direkt olarak uygulamanın kendisi kullanılamaz hâle geliyor. Şuanda sınavlarımdan dolayı bununla ilgilenecek zamanım yok o yüzden projeyi arşivliyorum. Belki bir gün geliştirmeye kaldığım yerden devam ederim.
 
 Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımları görüntüleme, bakiye bazlı kalan kullanım hesaplama ve duyuruları görüntüleme gibi özellikler sunan bir React Native Expo uygulamasıdır.
 
