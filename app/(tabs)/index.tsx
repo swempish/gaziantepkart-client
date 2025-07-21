@@ -364,15 +364,48 @@ export default function HomeScreen() {
           </View>
         </Modal>
 
-        <Modal isVisible={isUpdateModalVisible}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 5, padding: 12, }}>
-            <Text style={{ color: 'black', textAlign: 'center', fontWeight: 'bold', fontSize: 22, marginBottom: 10 }}>{güncellemeNotu?.title}</Text>
-            <View style={{ height: 1, backgroundColor: 'black', marginBottom: 10 }}></View>
-            <Text style={{ color: 'black', textAlign: 'left', fontSize: 16, marginBottom: 20 }}>{güncellemeNotu?.description}</Text>
-
-            <Button title="İNDİR" color={'green'} onPress={() => { Linking.openURL(güncellemeNotu?.url); }} />
-            <View style={{ marginBottom: 10 }}></View>
-            <Button title="Kapat" onPress={() => setUpdateModalVisible(false)} />
+        <Modal isVisible={isUpdateModalVisible}
+          animationIn="zoomInDown"
+          animationOut="zoomOutUp"
+          animationInTiming={700}
+          animationOutTiming={500}
+          backdropTransitionInTiming={700}
+          backdropTransitionOutTiming={500}
+          useNativeDriver={true}
+          backdropOpacity={0.5}
+        >
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 10 }}>
+            <View style={{ backgroundColor: '#e0f2f1', borderRadius: 50, padding: 16, marginBottom: 16 }}>
+              <Image source={require('@/assets/images/adaptive-icon.png')} style={{ width: 48, height: 48, borderRadius: 24 }} />
+            </View>
+            <Text style={{ color: '#222', textAlign: 'center', fontWeight: 'bold', fontSize: 24, marginBottom: 10, letterSpacing: 0.5 }}>{güncellemeNotu?.title}</Text>
+            <View style={{ height: 2, backgroundColor: '#0a7ea4', marginBottom: 16, width: 60, alignSelf: 'center', borderRadius: 2 }}></View>
+            {/* Sürüm Bilgileri */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <View style={{ backgroundColor: '#e0f2f1', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 14, marginRight: 4 }}>
+                <Text style={{ color: '#0a7ea4', fontWeight: 'bold', fontSize: 15 }}>Yeni sürüm</Text>
+                <Text style={{ color: '#222', fontWeight: 'bold', fontSize: 16 }}>{güncellemeNotu?.description?.match(/Yeni sürüm: ([^\n]+)/)?.[1] || '-'}</Text>
+              </View>
+              <View style={{ backgroundColor: '#f1f8e9', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 14, marginLeft: 4 }}>
+                <Text style={{ color: '#388E3C', fontWeight: 'bold', fontSize: 15 }}>Yüklü sürüm</Text>
+                <Text style={{ color: '#222', fontWeight: 'bold', fontSize: 16 }}>{güncellemeNotu?.description?.match(/Yüklü sürüm: ([^\n]+)/)?.[1] || '-'}</Text>
+              </View>
+            </View>
+            {/* Güncelleme Notları */}
+            <Text style={{ color: '#0a7ea4', fontWeight: 'bold', fontSize: 17, marginBottom: 6, alignSelf: 'flex-start' }}>Güncelleme Notları</Text>
+            <View style={{ backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, marginBottom: 20, alignSelf: 'stretch' }}>
+              <ScrollView style={{ maxHeight: 120 }}>
+                <Text style={{ color: '#444', fontSize: 15, lineHeight: 21 }}>
+                  {güncellemeNotu?.description?.split('Güncelleme notları:')[1]?.trim() || ''}
+                </Text>
+              </ScrollView>
+            </View>
+            <Pressable onPress={() => { Linking.openURL(güncellemeNotu?.url); }} style={{ backgroundColor: '#388E3C', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 32, marginBottom: 12, width: '100%' }}>
+              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18, textAlign: 'center', letterSpacing: 1 }}>İNDİR</Text>
+            </Pressable>
+            <Pressable onPress={() => setUpdateModalVisible(false)} style={{ backgroundColor: '#e0e0e0', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 32, width: '100%' }}>
+              <Text style={{ color: '#222', fontWeight: 'bold', fontSize: 16, textAlign: 'center' }}>Kapat</Text>
+            </Pressable>
           </View>
         </Modal>
 
