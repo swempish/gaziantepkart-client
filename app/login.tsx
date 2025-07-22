@@ -94,7 +94,6 @@ export default function Login() {
             await AsyncStorage.setItem('apiKey', apiKeyData["accessToken"]);
             await AsyncStorage.setItem('refreshToken', apiKeyData["refreshToken"]);
             await AsyncStorage.setItem('kartlarım', JSON.stringify([]));
-            alert("Giriş yapıldı.");
             router.replace("/");
             setProcessing(false);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);

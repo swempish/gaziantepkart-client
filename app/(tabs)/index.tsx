@@ -42,54 +42,105 @@ export default function HomeScreen() {
     kartNumarası = kartNumarası.trim().replace(" ", "").replace("-", "");
 
   }
-  async function uygulamaGüncellemeleriniDenetle() {
-    let response = await fetch("https://api.github.com/repos/swempish/gaziantepkart-client/releases/latest");
-    let data = await response.json();
-    let mevcutSürüm = data.tag_name;
-    let yerelSürüm = pkg.version;
-    
-    if (yerelSürüm !== null && yerelSürüm.trim().replace("v", "") !== mevcutSürüm.trim().replace("v", "")) {
-      setGüncellemeNotu({"title": "Uygulamanın yeni sürümü var!", "description": `Yeni sürüm: ${mevcutSürüm}\nYüklü sürüm: v${yerelSürüm}\nGüncelleme notları:\n\n${data.body}`, "url": `${data.assets[0].browser_download_url}`});
-      setUpdateModalVisible(true);
-    } else {
-    }
-    
+  // Sabitler ve yardımcı fonksiyonlar
+  const API_BASE = "https://service.kentkart.com/rl1/api";
+  const REGION = "028";
+  const VERSION = "Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart";
+  const LANG = "tr";
+
+  function getDefaultHeaders(extraHeaders: Record<string, string> = {}) {
+    return {
+      "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600",
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
+      "Content-Type": "application/json",
+      ...extraHeaders
+    };
   }
 
+  function buildUrl(path: string, params: Record<string, any> = {}) {
+    const url = new URL(`${API_BASE}${path}`);
+    Object.entries({ region: REGION, version: VERSION, lang: LANG, ...params }).forEach(
+      ([key, value]) => url.searchParams.append(key, value)
+    );
+    return url;
+  }
+
+  function handleApiError(error: unknown, fallbackMsg = "Bir hata oluştu.") {
+    console.error(error);
+    alert(fallbackMsg);
+  }
+
+  // Versiyon karşılaştırma fonksiyonu
+  function compareVersions(v1: string, v2: string): number {
+    // v1 > v2: 1, v1 < v2: -1, eşit: 0
+    const toNum = (v: string) => v.replace(/^v/, '').split('.').map(Number);
+    const a = toNum(v1);
+    const b = toNum(v2);
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      const n1 = a[i] || 0;
+      const n2 = b[i] || 0;
+      if (n1 > n2) return 1;
+      if (n1 < n2) return -1;
+    }
+    return 0;
+  }
+
+  async function uygulamaGüncellemeleriniDenetle() {
+    try {
+      let response = await fetch("https://api.github.com/repos/swempish/gaziantepkart-client/releases/latest");
+      let data = await response.json();
+      let mevcutSürüm = data.tag_name;
+      let yerelSürüm = pkg.version;
+      // Eğer yerel sürüm yayınlanan sürümden yeniyse veya eşitse panel gösterilmesin
+      if (
+        yerelSürüm && mevcutSürüm &&
+        compareVersions(yerelSürüm, mevcutSürüm) < 0
+      ) {
+        setGüncellemeNotu({
+          title: "Uygulamanın yeni sürümü var!",
+          description: `Yeni sürüm: ${mevcutSürüm}\nYüklü sürüm: v${yerelSürüm}\nGüncelleme notları:\n\n${data.body}`,
+          url: data.assets[0].browser_download_url
+        });
+        setUpdateModalVisible(true);
+      }
+    } catch (error) {
+      handleApiError(error, "Güncelleme kontrolü sırasında hata oluştu.");
+    }
+  }
+
+  // girişBilgileriniKontrolEt fonksiyonu
   async function girişBilgileriniKontrolEt() {
     try {
       let value = await AsyncStorage.getItem('apiKey');
       if (value !== null) {
-        let profilDetaylarıİstek = await fetch("https://service.kentkart.com/rl1/api/account?region=028&authType=4&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr", {
-          "credentials": "include",
-          "headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
-            "Authorization": `Bearer ${value}`,
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-site",
+        let profilDetaylarıİstek = await fetch(buildUrl("/account", { authType: 4 }), {
+          credentials: "include",
+          headers: getDefaultHeaders({
+            Authorization: `Bearer ${value}`,
             "If-None-Match": "W/\"2a0-/mg4TePNndJwLreejrLzoZMswRo\""
-          },
-          "referrer": "https://m.kentkart.com/",
-          "method": "GET",
-          "mode": "cors"
+          }),
+          referrer: "https://m.kentkart.com/",
+          method: "GET",
+          mode: "cors"
         });
         let profilDetayları = await profilDetaylarıİstek.json();
-        if (profilDetayları["result"]["code"] == "33") {
+        if (profilDetayları?.result?.code == "33") {
           router.replace('/login');
           return false;
         }
-        if (profilDetayları["result"]["code"] != "0") {
+        if (profilDetayları?.result?.code != "0") {
           return false;
         }
-        kullanıcıProfili["isim"] = profilDetayları["accountInfo"]["name"];
-        kullanıcıProfili["soyisim"] = profilDetayları["accountInfo"]["surname"];
-        kullanıcıProfili["email"] = profilDetayları["accountInfo"]["email"];
-        kullanıcıProfili["telefon"] = profilDetayları["accountInfo"]["phone"];
-        kullanıcıProfili["hesapAçılmaTarihi"] = new Intl.DateTimeFormat('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(profilDetayları["accountInfo"]["accountCreateDate"]));
-        kullanıcıProfili["profilFotoğrafı"] = "https://api.dicebear.com/9.x/initials/jpg?seed=" + profilDetayları["accountInfo"]["name"] + " " + profilDetayları["accountInfo"]["surname"];
+        kullanıcıProfili = {
+          ...kullanıcıProfili,
+          isim: profilDetayları.accountInfo.name,
+          soyisim: profilDetayları.accountInfo.surname,
+          email: profilDetayları.accountInfo.email,
+          telefon: profilDetayları.accountInfo.phone,
+          hesapAçılmaTarihi: new Intl.DateTimeFormat('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(profilDetayları.accountInfo.accountCreateDate)),
+          profilFotoğrafı: `https://api.dicebear.com/9.x/initials/jpg?seed=${profilDetayları.accountInfo.name} ${profilDetayları.accountInfo.surname}`
+        };
         setProfilDetayları(kullanıcıProfili);
         return true;
       } else {
@@ -104,8 +155,9 @@ export default function HomeScreen() {
     }
   }
 
+  // kartSorgula fonksiyonu
   async function kartSorgula(kartNumarası: string) {
-    if (kartNumarası.trim() == "") {
+    if (kartNumarası.trim() === "") {
       alert("Lütfen kart numarasını giriniz.");
       return;
     }
@@ -115,110 +167,59 @@ export default function HomeScreen() {
       setProcessing(false);
       return;
     }
-    setResponse({ "cardlist": null, "clientMeta": null });
-
-
-    let url = "https://service.kentkart.com/rl1/api/card/balance"
-    let params = {
-      "region": "028",
-      "version": "Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart",
-      "lang": "tr",
-      "authType": "4",
-      "alias": String(kartNumarası)
-    }
-
+    setResponse({ cardlist: null, clientMeta: null });
     let apiKey = await AsyncStorage.getItem('apiKey');
-
-    let headers = {
-      "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600",
-      "Accept": "application/json, text/plain, */*",
-      "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+    let headers = getDefaultHeaders({
+      Authorization: `Bearer ${apiKey}`,
+      referrer: "https://m.kentkart.com/",
       "Sec-Fetch-Dest": "empty",
       "Sec-Fetch-Mode": "cors",
-      "Sec-Fetch-Site": "same-site",
-      "referrer": "https://m.kentkart.com/",
-    }
-
-    /**
-     * Usage Listesi sonucu
-     * type : 0 = Karttan para çekilmiş, kart kullanılmış
-     * type : 1 = Karta para yüklenmiş bekleyen işlem
-     */
-
-    // Create the URL with query parameters
-    let urlWithParams = new URL(url);
-    for (const [key, value] of Object.entries(params)) {
-      urlWithParams.searchParams.append(key, value);
-    }
-
-    fetch(urlWithParams, {
+      "Sec-Fetch-Site": "same-site"
+    });
+    let url = buildUrl("/card/balance", { authType: 4, alias: String(kartNumarası) });
+    fetch(url, {
       method: 'GET',
-      headers: headers
+      headers
     })
       .then(response => {
-          if (response.ok) {
-            return response.json();
-          } else {
-            alert("Geçerli bir kart numarası giriniz.");
-
-          }   
+        if (response.ok) {
+          return response.json();
+        } else {
+          alert("Geçerli bir kart numarası giriniz.");
+        }
       })
       .then(data => {
-
+        if (!data) return;
         if (data.result.code == 33) {
           alert(data.result.message);
         }
-        data["clientMeta"] = {
-          "bakiyeİşlemi": false,
-          "miktar": 0,
-          "mesaj": ""
+        data.clientMeta = {
+          bakiyeİşlemi: false,
+          miktar: 0,
+          mesaj: ""
         };
-
-        if (data.cardlist[0].oChargeMessage && data.cardlist[0].oChargeMessage != "") {
-          data["clientMeta"]["bakiyeİşlemi"] = true;
-          data["clientMeta"]["mesaj"] = "Henüz gerçekleşmemiş dolumunuz mevcuttur!\r\n\r\n" + data.cardlist[0].oChargeList[0].datetime + " - " + String(data.cardlist[0].oChargeList[0].amount) + " TL\r\n\r\n";
-          data["clientMeta"]["miktar"] = data.cardlist[0].oChargeList[0].amount;
+        if (data.cardlist[0]?.oChargeMessage) {
+          data.clientMeta.bakiyeİşlemi = true;
+          data.clientMeta.mesaj = `Henüz gerçekleşmemiş dolumunuz mevcuttur!\r\n\r\n${data.cardlist[0].oChargeList[0].datetime} - ${String(data.cardlist[0].oChargeList[0].amount)} TL\r\n\r\n`;
+          data.clientMeta.miktar = data.cardlist[0].oChargeList[0].amount;
         }
-
-
         setResponse(data);
         setProcessing(false);
       })
       .catch(error => {
-        alert("Kart bilgilerinizi kontrol ediniz.");
+        handleApiError(error, "Kart bilgilerinizi kontrol ediniz.");
         setProcessing(false);
       });
   }
+  // duyurularıGetir fonksiyonu
   function duyurularıGetir() {
-    let url = "https://service.kentkart.com/rl1/api/info/announce"
-    let params = {
-      "region": "028",
-      "version": "Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart",
-      "lang": "tr"
-    }
-
-    let headers = {
-      "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600",
-      "Accept": "application/json, text/plain, */*",
-      "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
-      "Content-Type": "application/json",
-      "Sec-Fetch-Dest": "empty",
-      "Sec-Fetch-Mode": "cors",
-      "Sec-Fetch-Site": "same-site",
+    let url = buildUrl("/info/announce");
+    let headers = getDefaultHeaders({
       "If-None-Match": "W/\"5e4-pnubkT+MIpACuTMDw9MwKUpZklA\""
-    }
-
-    // Create the URL with query parameters
-    let urlWithParams = new URL(url);
-    for (const [key, value] of Object.entries(params)) {
-      urlWithParams.searchParams.append(key, value);
-    }
-
-    fetch(urlWithParams, {
+    });
+    fetch(url, {
       method: 'GET',
-      headers: headers
+      headers
     })
       .then(response => {
         if (response.ok) {
@@ -231,92 +232,26 @@ export default function HomeScreen() {
         setDuyurular(data.announceList);
       })
       .catch(error => {
-        console.error(error);
+        handleApiError(error);
       });
-
   }
 
+  // tarifeleriGetir fonksiyonu
   async function tarifeleriGetir() {
-    let url = "https://service.kentkart.com/rl1//api/info/tariff"
-    let params = {
-      "region": "028",
-      "version": "Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart",
-      "lang": "tr"
+    try {
+      const response = await fetch("https://acikveriapi.gaziantep.bel.tr/api/Ulasim/UcretTarifesi");
+      const data = await response.json();
+      // Belediye (Şehir İçi) satırını bul
+      const sehirIci = data.data.find((item: any) => item.type === "Belediye (Şehir İçi)");
+      let temizData = { clientMeta: { öğrenci: 0, tam: 0 } };
+      if (sehirIci) {
+        temizData.clientMeta.öğrenci = sehirIci.student || 0;
+        temizData.clientMeta.tam = sehirIci.full || 0;
+      }
+      setTarifeler(temizData);
+    } catch (error) {
+      handleApiError(error, "Ücret tarifeleri alınırken hata oluştu.");
     }
-
-    let headers = {
-      "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 6.1;) AppleWebKit/601.21 (KHTML, like Gecko) Chrome/50.0.2957.192 Safari/600",
-      "Accept": "application/json, text/plain, */*",
-      "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
-      "Content-Type": "application/json",
-      "Sec-Fetch-Dest": "empty",
-      "Sec-Fetch-Mode": "cors",
-      "Sec-Fetch-Site": "same-site",
-      "If-None-Match": "W/\"14b9-YoL7VFLSzqNR1AGKjCZb/Dh5jMc\""
-    }
-
-    // Create the URL with query parameters
-    let urlWithParams = new URL(url);
-    for (const [key, value] of Object.entries(params)) {
-      urlWithParams.searchParams.append(key, value);
-    }
-
-    fetch(urlWithParams, {
-      method: 'GET',
-      headers: headers
-    })
-      .then(response => {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw new Error(`Error: ${response.status}, ${response.statusText}`);
-        }
-      })
-      .then(data => {
-
-        let temizData = {
-          "clientMeta": {
-            "öğrenci": 0,
-            "tam": 0
-          }
-        };
-        temizData["clientMeta"] = {
-          "öğrenci": 0,
-          "tam": 0
-        };
-
-        // Regex ifadesi
-        let regex = /Özel\s?Halk\s?Otobüsü\s?:\s?(\d+(?:\.\d+)?)₺/;
-
-        for (let index = 0; index < data.tariffList.length; index++) {
-          const tarife = data.tariffList[index];
-          let text = tarife.description;
-
-          if (tarife["id"] == 14 /* Öğrenci */) {
-            // Eşleşmeyi bul
-            let match = text.match(regex);
-
-            if (match) {
-              temizData["clientMeta"]["öğrenci"] = parseFloat(match[1]);
-            }
-          } else if (tarife["id"] == 16 /* Tam */) {
-
-            let match = text.match(regex);
-            if (match) {
-              temizData["clientMeta"]["tam"] = parseFloat(match[1]);
-            }
-          } else {
-            continue;
-          }
-        }
-
-        setTarifeler(temizData);
-      })
-      .catch(error => {
-        console.error(error);
-      });
-
-
   }
 
   useEffect(() => {
