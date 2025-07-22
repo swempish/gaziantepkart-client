@@ -4,6 +4,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 
+// Renk paleti ve stil sabitleri (index.tsx ile uyumlu)
+const COLORS = {
+    background: '#F7FAFC',
+    card: '#FFFFFF',
+    primary: '#1976D2',
+    secondary: '#64B5F6',
+    text: '#222',
+    muted: '#6B7280',
+    border: '#E3E8EF',
+    success: '#43A047',
+    warning: '#FFA726',
+    info: '#0288D1',
+};
+
 export default function Login() {
     const [proccessing, setProcessing] = useState(false);
     const [numaraInput, setNumaraInput] = useState("");
@@ -125,13 +139,17 @@ export default function Login() {
                 style={{ flex: 1 }}
             >
                 <View style={styles.container}>
-                    <View style={styles.card}>
+                    {/* Sadece ortalanmış logo */}
+                    <View style={styles.logoBox}>
                         <Image source={require('../assets/images/icon.png')} style={styles.logo} />
+                    </View>
+                    {/* Giriş Kartı */}
+                    <View style={styles.card}>
                         <Text style={styles.title}>Giriş Yap</Text>
                         <TextInput
                             onChangeText={setNumaraInput}
                             placeholder="Telefon Numarası (5XXXXXXXXX)"
-                            placeholderTextColor="#bbb"
+                            placeholderTextColor={COLORS.muted}
                             keyboardType="phone-pad"
                             style={[styles.input, numaraFocus && styles.inputFocus]}
                             value={numaraInput}
@@ -141,7 +159,7 @@ export default function Login() {
                         <TextInput
                             onChangeText={setŞifreInput}
                             placeholder="Şifre (PIN)"
-                            placeholderTextColor="#bbb"
+                            placeholderTextColor={COLORS.muted}
                             keyboardType="numeric"
                             secureTextEntry={true}
                             style={[styles.input, şifreFocus && styles.inputFocus]}
@@ -172,7 +190,6 @@ export default function Login() {
                                 <Text style={styles.buttonText}>Giriş</Text>
                             )}
                         </Pressable>
-                        {/* Buton içinde gösterildiği için ekstra ActivityIndicator kaldırıldı */}
                     </View>
                 </View>
             </KeyboardAvoidingView>
@@ -183,61 +200,66 @@ export default function Login() {
 const styles = StyleSheet.create({
     solidBg: {
         flex: 1,
-        backgroundColor: '#fff8f6',
+        backgroundColor: COLORS.background,
     },
     container: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    logoBox: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 0,
+        marginBottom: 12,
+    },
     card: {
         width: '90%',
         maxWidth: 350,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         borderRadius: 20,
         padding: 28,
         alignItems: 'center',
-        shadowColor: '#bbb',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.10,
-        shadowRadius: 16,
-        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
     },
     logo: {
-        width: 64,
-        height: 64,
-        marginBottom: 18,
-        borderRadius: 16,
+        width: 120,
+        height: 120,
+        borderRadius: 20,
     },
     title: {
-        fontSize: 28,
+        fontSize: 22,
         fontWeight: 'bold',
-        color: '#c62828',
-        marginBottom: 24,
+        color: COLORS.primary,
+        marginBottom: 18,
         letterSpacing: 1,
     },
     input: {
         width: '100%',
-        backgroundColor: '#fff',
+        backgroundColor: '#F1F5F9',
         borderRadius: 12,
         padding: 12,
         marginBottom: 16,
-        color: '#263238',
+        color: COLORS.text,
         fontSize: 16,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: COLORS.border,
     },
     inputFocus: {
-        borderBottomColor: '#e57373',
+        borderColor: COLORS.primary,
     },
     button: {
         width: '100%',
-        backgroundColor: '#e53935',
+        backgroundColor: COLORS.primary,
         paddingVertical: 14,
         borderRadius: 12,
         alignItems: 'center',
         marginTop: 8,
-        shadowColor: '#bbb',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 8,
@@ -250,10 +272,10 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     buttonDisabled: {
-        backgroundColor: '#ffd6d6',
+        backgroundColor: '#B3E5FC',
     },
     buttonPressed: {
-        backgroundColor: '#c62828',
+        backgroundColor: '#1565C0',
     },
     timeoutPanel: {
         position: 'absolute',
@@ -269,13 +291,13 @@ const styles = StyleSheet.create({
     timeoutTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#c62828',
+        color: COLORS.primary,
         marginBottom: 12,
         backgroundColor: 'transparent',
     },
     timeoutText: {
         fontSize: 16,
-        color: '#263238',
+        color: COLORS.text,
         textAlign: 'center',
         backgroundColor: 'transparent',
     },
@@ -285,10 +307,10 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 20,
         borderWidth: 1,
-        borderColor: '#e57373',
+        borderColor: COLORS.primary,
     },
     timeoutButtonText: {
-        color: '#c62828',
+        color: COLORS.primary,
         fontWeight: 'bold',
         fontSize: 16,
     },
