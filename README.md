@@ -41,8 +41,8 @@ Uygulamanın en son versiyonunu indirmek için [buraya](https://github.com/swemp
 
 ## Fotoğraflar
 
-<img src="https://github.com/user-attachments/assets/94152912-c0cc-4acd-aec8-484c978a7f16" width="300">
-<img src="https://github.com/user-attachments/assets/11273552-e17d-4c6d-aa0b-33829a31e0e8" width="300">
+<img src="https://github.com/user-attachments/assets/c7edcbde-2f81-4241-8e5b-e5c141edebda" width="300">
+<img src="https://github.com/user-attachments/assets/c7197435-3663-430b-8d38-2385faebd80a" width="300">
 
 ## Gereksinimler
 
