@@ -40,8 +40,9 @@ Uygulamanın en son versiyonunu indirmek için [buraya](https://github.com/swemp
 - [x] Duyuruları görüntüleme
 
 ## Fotoğraflar
-<img src="https://github.com/user-attachments/assets/2e408e69-218b-4abc-aa02-f259d6c1ee2d" width="300">
-<img src="https://github.com/user-attachments/assets/af462510-53ee-48d4-8eb5-75a92ac4838e" width="300">
+
+<img src="https://github.com/user-attachments/assets/94152912-c0cc-4acd-aec8-484c978a7f16" width="300">
+<img src="https://github.com/user-attachments/assets/11273552-e17d-4c6d-aa0b-33829a31e0e8" width="300">
 
 ## Gereksinimler
 
@@ -74,7 +75,7 @@ Uygulamanın en son versiyonunu indirmek için [buraya](https://github.com/swemp
 - [x] Giriş sistemi ekleme
 - [ ] Kart kaydetme
 - [ ] Kart'ı favoriye ekleme
-- [ ] Kullanıcı dostu arayüz ve tasarım iyileştirmeleri
+- [x] Kullanıcı dostu arayüz ve tasarım iyileştirmeleri
 
 ## Lisans
 
