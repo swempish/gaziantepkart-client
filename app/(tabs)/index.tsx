@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Linking, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Linking, Alert, Animated, Easing, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaskedTextInput } from "react-native-mask-text";
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import Modal from "react-native-modal";
+import uuid from 'react-native-uuid';
 const gaziantepImage = require('../../assets/images/gaziantep.jpg');
 
 // Açık tema renkleri
@@ -21,6 +22,63 @@ const COLORS = {
   warning: '#FFA726',
   info: '#0288D1',
 };
+
+// Kayıtlı kartlar için veri modeli ve işlemler
+
+type KayitliKart = {
+  id: string; // uuid
+  ad: string;
+  kartNo: string; // maskelenmiş veya düz
+  bakiye: number;
+  sonKullanim: string;
+  sonKullanimMiktar: number | null;
+  sonYukleme: string;
+  sonYuklemeMiktar: number | null;
+  bekleyenDolumMesaj: string | null;
+  bekleyenDolumMiktar: number | null;
+  kayitTarihi: string;
+  guncellenmeTarihi: string;
+};
+
+// Kayıtlı kartları getir
+async function getKayitliKartlar(): Promise<KayitliKart[]> {
+  const data = await AsyncStorage.getItem('kartlarim');
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+// Kayıtlı kartları kaydet
+async function setKayitliKartlar(kartlar: KayitliKart[]): Promise<void> {
+  await AsyncStorage.setItem('kartlarim', JSON.stringify(kartlar));
+}
+
+// Yeni kart ekle
+async function addKayitliKart(kart: KayitliKart): Promise<void> {
+  const kartlar = await getKayitliKartlar();
+  kartlar.push(kart);
+  await setKayitliKartlar(kartlar);
+}
+
+// Kart güncelle (id ile)
+async function updateKayitliKart(id: string, yeniKart: Partial<KayitliKart>): Promise<void> {
+  const kartlar = await getKayitliKartlar();
+  const idx = kartlar.findIndex(k => k.id === id);
+  if (idx !== -1) {
+    kartlar[idx] = { ...kartlar[idx], ...yeniKart, guncellenmeTarihi: new Date().toISOString() };
+    await setKayitliKartlar(kartlar);
+  }
+}
+
+// Kart sil (id ile)
+async function deleteKayitliKart(id: string): Promise<void> {
+  const kartlar = await getKayitliKartlar();
+  const yeniKartlar = kartlar.filter(k => k.id !== id);
+  await setKayitliKartlar(yeniKartlar);
+}
 
 export default function HomeScreen() {
   // Profil
@@ -58,6 +116,20 @@ export default function HomeScreen() {
   // Duyuru modalı
   const [selectedDuyuru, setSelectedDuyuru] = useState<any | null>(null);
   const [isDuyuruModalVisible, setDuyuruModalVisible] = useState(false);
+
+  // Kayıtlı kartlar
+  const [kayitliKartlar, setKayitliKartlar] = useState<KayitliKart[]>([]);
+  const [kartlarLoading, setKartlarLoading] = useState(true);
+  const [kartEkleModal, setKartEkleModal] = useState(false);
+  const [yeniKartNo, setYeniKartNo] = useState("");
+  const [yeniKartAd, setYeniKartAd] = useState("");
+  const [yeniKartHata, setYeniKartHata] = useState<string|null>(null);
+  const [yeniKartLoading, setYeniKartLoading] = useState(false);
+  const [guncellenenKartId, setGuncellenenKartId] = useState<string|null>(null);
+
+  // Kart silme modalı için state
+  const [silModalVisible, setSilModalVisible] = useState(false);
+  const [silModalKartId, setSilModalKartId] = useState<string|null>(null);
 
   const openDuyuruModal = (duyuru: any) => {
     setSelectedDuyuru(duyuru);
@@ -144,6 +216,19 @@ export default function HomeScreen() {
     fetchTarifeler();
   }, []);
 
+  // Uygulama açılışında kayıtlı kartları yükle
+  useEffect(() => {
+    async function loadKartlar() {
+      setKartlarLoading(true);
+      const kartlar = await getKayitliKartlar();
+      setKayitliKartlar(kartlar);
+      setKartlarLoading(false);
+      // Arka planda güncelle
+      kartlar.forEach(kart => guncelleKartBilgi(kart.id, kart.kartNo));
+    }
+    loadKartlar();
+  }, []);
+
   // Kart sorgulama fonksiyonu
   const kartSorgula = async () => {
     setProcessing(true);
@@ -209,6 +294,117 @@ export default function HomeScreen() {
     setProcessing(false);
   };
 
+  // Kart ekleme işlemi
+  async function handleKartEkle() {
+    setYeniKartHata(null);
+    if (!yeniKartNo || yeniKartNo.length !== 11) {
+      setYeniKartHata("Lütfen geçerli bir kart numarası giriniz.");
+      return;
+    }
+    if (!yeniKartAd || yeniKartAd.length < 2) {
+      setYeniKartHata("Kart adı en az 2 karakter olmalı.");
+      return;
+    }
+    setYeniKartLoading(true);
+    try {
+      // Kartı API ile sorgula
+      const apiKey = await AsyncStorage.getItem('apiKey');
+      if (!apiKey) {
+        setYeniKartHata("Önce giriş yapmalısınız.");
+        setYeniKartLoading(false);
+        return;
+      }
+      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr&authType=4&alias=${yeniKartNo}`;
+      const resp = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json, text/plain, */*",
+        },
+      });
+      const data = await resp.json();
+      if (!data.cardlist || !data.cardlist[0]) {
+        setYeniKartHata("Kart bulunamadı veya geçersiz.");
+        setYeniKartLoading(false);
+        return;
+      }
+      const kart = data.cardlist[0];
+      const usage = kart.usage || [];
+      let bekleyenDolumMesaj: string | null = null;
+      let bekleyenDolumMiktar: number | null = null;
+      if (kart?.oChargeMessage && kart?.oChargeList?.[0]) {
+        bekleyenDolumMesaj = kart.oChargeMessage;
+        bekleyenDolumMiktar = kart.oChargeList[0].amount;
+      }
+      const yeniKayit: KayitliKart = {
+        id: uuid.v4() as string,
+        ad: yeniKartAd,
+        kartNo: yeniKartNo,
+        bakiye: kart.balance,
+        sonKullanim: usage[0]?.date || "-",
+        sonKullanimMiktar: usage[0]?.amt ?? null,
+        sonYukleme: usage[1]?.date || "-",
+        sonYuklemeMiktar: usage[1]?.amt ?? null,
+        bekleyenDolumMesaj,
+        bekleyenDolumMiktar,
+        kayitTarihi: new Date().toISOString(),
+        guncellenmeTarihi: new Date().toISOString(),
+      };
+      await addKayitliKart(yeniKayit);
+      setKayitliKartlar(await getKayitliKartlar());
+      setKartEkleModal(false);
+      setYeniKartNo("");
+      setYeniKartAd("");
+    } catch (e) {
+      setYeniKartHata("Kart eklenirken hata oluştu.");
+    }
+    setYeniKartLoading(false);
+  }
+
+  // Kart bilgisini güncelle (ikonlu animasyonlu)
+  async function guncelleKartBilgi(id: string, kartNo: string) {
+    setGuncellenenKartId(id);
+    try {
+      const apiKey = await AsyncStorage.getItem('apiKey');
+      if (!apiKey) return;
+      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr&authType=4&alias=${kartNo}`;
+      const resp = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json, text/plain, */*",
+        },
+      });
+      const data = await resp.json();
+      if (!data.cardlist || !data.cardlist[0]) return;
+      const kart = data.cardlist[0];
+      const usage = kart.usage || [];
+      let bekleyenDolumMesaj: string | null = null;
+      let bekleyenDolumMiktar: number | null = null;
+      if (kart?.oChargeMessage && kart?.oChargeList?.[0]) {
+        bekleyenDolumMesaj = kart.oChargeMessage;
+        bekleyenDolumMiktar = kart.oChargeList[0].amount;
+      }
+      await updateKayitliKart(id, {
+        bakiye: kart.balance,
+        sonKullanim: usage[0]?.date || "-",
+        sonKullanimMiktar: usage[0]?.amt ?? null,
+        sonYukleme: usage[1]?.date || "-",
+        sonYuklemeMiktar: usage[1]?.amt ?? null,
+        bekleyenDolumMesaj,
+        bekleyenDolumMiktar,
+      });
+      setKayitliKartlar(await getKayitliKartlar());
+    } catch {}
+    setGuncellenenKartId(null);
+  }
+
+  // Kart silme
+  async function handleKartSil(id: string) {
+    await deleteKayitliKart(id);
+    setKayitliKartlar(await getKayitliKartlar());
+    setSilModalVisible(false);
+    setSilModalKartId(null);
+  }
+
   // Çıkış
   const handleLogout = async () => {
     await AsyncStorage.setItem('apiKey', '');
@@ -257,9 +453,67 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Kayıtlı Kartlar */}
+        <Text style={styles.sectionTitle}>Kayıtlı Kartlar</Text>
+        {kartlarLoading ? (
+          <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 16 }} />
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16, paddingHorizontal: 12, marginRight: 12 }}>
+            {kayitliKartlar.map((kart) => (
+              <View key={kart.id} style={[styles.kayitliKartCard, { marginRight: 12, overflow: 'hidden', borderColor: kart.bekleyenDolumMiktar ? '#FFB300' : COLORS.card }]}> 
+                {/* Güncelleniyor overlay */}
+                {guncellenenKartId === kart.id && (
+                  <View style={styles.kartGuncelleOverlay}>
+                    <ActivityIndicator size="large" color="#fff" />
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.kayitliKartAd}>{kart.ad}</Text>
+                  <Pressable onPress={() => guncelleKartBilgi(kart.id, kart.kartNo)} disabled={guncellenenKartId === kart.id}>
+                    <Animated.View style={{ transform: [{ rotate: guncellenenKartId === kart.id ? '360deg' : '0deg' }] }}>
+                      <Ionicons name="refresh" size={22} color={COLORS.info} />
+                    </Animated.View>
+                  </Pressable>
+                </View>
+                <Text style={styles.kayitliKartNo}>{maskKartNo(kart.kartNo)}</Text>
+                <Text style={styles.kayitliKartBakiye}>₺ {kart.bakiye}</Text>
+                {kart.bekleyenDolumMiktar && (
+                  <Text style={styles.kayitliKartBekleyenDolum}>Bekleyen Dolum: ₺ {kart.bekleyenDolumMiktar}</Text>
+                )}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                  <View style={styles.infoMiniBox}>
+                    <Text style={styles.infoMiniTitle}>Son Kullanım</Text>
+                    <Text style={styles.infoMiniDate}>{kart.sonKullanim}</Text>
+                    <Text style={styles.infoMiniAmount}>{kart.sonKullanimMiktar !== null ? `₺${kart.sonKullanimMiktar}` : '-'}</Text>
+                  </View>
+                  <View style={styles.infoMiniBox}>
+                    <Text style={styles.infoMiniTitle}>Son Yükleme</Text>
+                    <Text style={styles.infoMiniDate}>{kart.sonYukleme}</Text>
+                    <Text style={styles.infoMiniAmount}>{kart.sonYuklemeMiktar !== null ? `₺${kart.sonYuklemeMiktar}` : '-'}</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: "auto" }}>
+                  <Text style={styles.kayitliKartZaman}>Güncellendi: {new Date(kart.guncellenmeTarihi).toLocaleString('tr-TR')}</Text>
+                  <Pressable style={{padding: 4 }} onPress={() => { setSilModalVisible(true); setSilModalKartId(kart.id); }} disabled={guncellenenKartId === kart.id}>
+                    <Ionicons name="trash" size={18} color="#D32F2F" />
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+            {/* Kart Ekle Kartı */}
+            <Pressable
+              style={[styles.kartEkleCard, { marginRight: 12, height: 250 }]}
+              onPress={() => setKartEkleModal(true)}
+            >
+              <Ionicons name="add-circle" size={48} color={COLORS.primary} />
+              <Text style={styles.kartEkleText}>Kart Ekle</Text>
+            </Pressable>
+          </ScrollView>
+        )}
+
         {/* Kart Sorgulama Alanı */}
         <View style={styles.cardBox}>
-          <Text style={styles.cardTitle}>Kart Bakiye Sorgulama</Text>
+          <Text style={styles.cardTitle}>Kart Sorgulama</Text>
           <MaskedTextInput
             mask="99999-99999-9"
             onChangeText={(text, rawText) => { setMaskedValue(text); setUnmaskedValue(rawText); }}
@@ -367,6 +621,45 @@ export default function HomeScreen() {
           </View>
         </Modal>
 
+        {/* Kart Ekle Modalı */}
+        <Modal
+          isVisible={kartEkleModal}
+          animationIn="zoomIn"
+          animationOut="zoomOut"
+          animationInTiming={400}
+          animationOutTiming={300}
+          backdropOpacity={0.5}
+          onBackdropPress={() => setKartEkleModal(false)}
+          useNativeDriver={true}
+          style={{ justifyContent: 'center', alignItems: 'center', margin: 0 }}
+        >
+          <View style={styles.kartEkleModalBox}>
+            <Text style={styles.kartEkleModalTitle}>Kart Ekle</Text>
+            <TextInput
+              placeholder="Kart Adı (ör. Kendi Kartım)"
+              style={styles.kartEkleInput}
+              value={yeniKartAd}
+              onChangeText={setYeniKartAd}
+              autoFocus
+            />
+            <TextInput
+              placeholder="Kart Numarası (11 haneli)"
+              style={styles.kartEkleInput}
+              value={yeniKartNo}
+              onChangeText={setYeniKartNo}
+              keyboardType="numeric"
+              maxLength={11}
+            />
+            {yeniKartHata && <Text style={styles.errorText}>{yeniKartHata}</Text>}
+            <Pressable style={styles.kartEkleBtn} onPress={handleKartEkle} disabled={yeniKartLoading}>
+              {yeniKartLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.kartEkleBtnText}>Kaydet</Text>}
+            </Pressable>
+            <Pressable style={styles.kartEkleIptalBtn} onPress={() => setKartEkleModal(false)}>
+              <Text style={styles.kartEkleIptalBtnText}>İptal</Text>
+            </Pressable>
+          </View>
+        </Modal>
+
         {/* Tarifeler */}
         <Text style={styles.sectionTitle}>Ücret Tarifeleri</Text>
         {tarifeLoading ? (
@@ -377,13 +670,13 @@ export default function HomeScreen() {
               <MaterialIcons name="school" size={24} color={COLORS.primary} />
               <Text style={styles.tarifeLabel}>Öğrenci</Text>
               <Text style={styles.tarifeValue}>{tarifeler.ogrenci} TL</Text>
-              </View>
+            </View>
             <View style={[styles.tarifeCard, { backgroundColor: '#FFFDE7' }]}> 
               <Ionicons name="person" size={24} color={COLORS.warning} />
               <Text style={styles.tarifeLabel}>Tam</Text>
               <Text style={styles.tarifeValue}>{tarifeler.tam} TL</Text>
-              </View>
-              </View>
+            </View>
+          </View>
         )}
 
         {/* Footer */}
@@ -406,6 +699,32 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* Kart Silme Onay Modalı */}
+        <Modal
+          isVisible={silModalVisible}
+          animationIn="zoomIn"
+          animationOut="zoomOut"
+          animationInTiming={350}
+          animationOutTiming={250}
+          backdropOpacity={0.5}
+          onBackdropPress={() => setSilModalVisible(false)}
+          useNativeDriver={true}
+          style={{ justifyContent: 'center', alignItems: 'center', margin: 0 }}
+        >
+          <View style={styles.silModalBox}>
+            <Text style={styles.silModalTitle}>Kartı silmek istediğinize emin misiniz?</Text>
+            <Text style={styles.silModalDesc}>Bu işlem geri alınamaz.</Text>
+            <View style={{ flexDirection: 'row', marginTop: 18 }}>
+              <Pressable style={styles.silModalBtn} onPress={() => setSilModalVisible(false)}>
+                <Text style={styles.silModalBtnText}>İptal</Text>
+              </Pressable>
+              <Pressable style={[styles.silModalBtn, { backgroundColor: '#D32F2F', marginLeft: 16 }]} onPress={() => silModalKartId && handleKartSil(silModalKartId)}>
+                <Text style={[styles.silModalBtnText, { color: '#fff' }]}>Sil</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -768,6 +1087,187 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
+  kartEkleCard: {
+    width: 140,
+    height: 180,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  kartEkleText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginTop: 8,
+  },
+  kayitliKartCard: {
+    width: 270,
+    height: 250,
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 4,
+    borderWidth: 2,
+    borderColor: COLORS.card, // default, dinamikte override
+  },
+  kayitliKartBekleyenDolum: {
+    color: '#FF9800',
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: 'bold',
+    textAlign: 'left',
+  },
+  kayitliKartAd: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 17,
+  },
+  kayitliKartNo: {
+    color: COLORS.muted,
+    fontSize: 14,
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  kayitliKartBakiye: {
+    color: COLORS.success,
+    fontWeight: 'bold',
+    fontSize: 24,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  kayitliKartLabel: {
+    color: COLORS.muted,
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  kayitliKartInfo: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  kayitliKartZaman: {
+    color: COLORS.secondary,
+    fontSize: 11,
+    fontStyle: 'italic',
+  },
+  kartEkleModalBox: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 24,
+    width: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  kartEkleModalTitle: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 22,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  kartEkleInput: {
+    width: '100%',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    color: COLORS.text,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  kartEkleBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    marginTop: 8,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  kartEkleBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 17,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  kartEkleIptalBtn: {
+    backgroundColor: '#E3E8EF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    marginTop: 8,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  kartEkleIptalBtnText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 15,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  kartGuncelleOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  silModalBox: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 28,
+    width: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  silModalTitle: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 20,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  silModalDesc: {
+    color: COLORS.text,
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  silModalBtn: {
+    backgroundColor: '#E3E8EF',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+  },
+  silModalBtnText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
+  },
 });
 
 function maskPhone(phone: string) {
@@ -783,5 +1283,10 @@ function getUsageAmount(date: string) {
   // Şu an panelde usage miktarı tutulmuyor, bu yüzden örnek olarak '-' döndürüyoruz.
   // Gerçek kullanım için kartBilgi'ye usage listesini de ekleyip buradan çekebilirsiniz.
   return '-';
+}
+
+function maskKartNo(kartNo: string) {
+  if (!kartNo || kartNo.length !== 11) return kartNo;
+  return kartNo.slice(0, 5) + '-' + kartNo.slice(5, 10) + '-' + kartNo.slice(10);
 }
 

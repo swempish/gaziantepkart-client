@@ -73,8 +73,7 @@ Uygulamanın en son versiyonunu indirmek için [buraya](https://github.com/swemp
 ## Yapılacaklar
 
 - [x] Giriş sistemi ekleme
-- [ ] Kart kaydetme
-- [ ] Kart'ı favoriye ekleme
+- [x] Kart kaydetme
 - [x] Kullanıcı dostu arayüz ve tasarım iyileştirmeleri
 
 ## Lisans

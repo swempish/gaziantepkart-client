@@ -1,7 +1,7 @@
 {
   "name": "gaziantepkart-client",
   "main": "expo-router/entry",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -40,6 +40,7 @@
     "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
     "react-native-text-input-mask": "^3.2.0",
+    "react-native-uuid": "^2.0.3",
     "react-native-web": "~0.19.13"
   },
   "devDependencies": {
