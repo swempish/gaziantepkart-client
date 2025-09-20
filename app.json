@@ -2,7 +2,7 @@
   "expo": {
     "name": "gaziantepkart-client",
     "slug": "gaziantepkart-client",
-    "version": "1.2.0",
+    "version": "1.3.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
