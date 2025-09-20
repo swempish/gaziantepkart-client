@@ -106,6 +106,9 @@ export default function HomeScreen() {
   const [duyurular, setDuyurular] = useState<any[]>([]);
   const [duyuruLoading, setDuyuruLoading] = useState(true);
 
+  // En yeni uygulama sürümü
+  const [enYeniVersiyon, setEnYeniVersiyon] = useState<string | null>(null);
+
   // Tarifeler
   const [tarifeler, setTarifeler] = useState({ ogrenci: 0, tam: 0 });
   const [tarifeLoading, setTarifeLoading] = useState(true);
@@ -139,6 +142,20 @@ export default function HomeScreen() {
     setDuyuruModalVisible(false);
     setSelectedDuyuru(null);
   };
+
+  // Github'dan en yeni uygulama sürümünü çek
+  useEffect(() => {
+    async function fetchLatestVersion() {
+      try {
+        const resp = await fetch("https://api.github.com/repos/swempish/gaziantepkart-client/releases/latest");
+        const data = await resp.json();
+        if (data?.tag_name) {
+          setEnYeniVersiyon(data.tag_name.replace(/^v/, ''));
+        }
+      } catch {}
+    }
+    fetchLatestVersion();
+  }, []);
 
   // Profil bilgisini yükle
   useEffect(() => {
@@ -455,6 +472,71 @@ export default function HomeScreen() {
             </Pressable>
           )}
         </View>
+
+        {/* Yeni sürüm uyarısı */}
+        {enYeniVersiyon && (() => {
+          const mevcutVersiyon = require('../../package.json').version;
+          if (mevcutVersiyon !== enYeniVersiyon) {
+            return (
+              <View
+                style={{
+                  backgroundColor: '#FFF8E1',
+                  borderColor: '#FFD54F',
+                  borderWidth: 1.5,
+                  paddingVertical: 18,
+                  paddingHorizontal: 18,
+                  borderRadius: 14,
+                  marginBottom: 18,
+                  marginHorizontal: 18,
+                  flexDirection: 'column',
+                  gap: 12,
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  shadowColor: '#FFB300',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 8,
+                  elevation: 2,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Ionicons name="alert-circle" size={28} color="#FFA000" style={{ marginRight: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16, marginBottom: 2 }}>
+                      Yeni sürüm mevcut: v{enYeniVersiyon}
+                    </Text>
+                    <Text style={{ color: COLORS.muted, fontSize: 13 }}>
+                      Uygulamanız güncel değil. En son özellikler ve iyileştirmeler için güncelleyin.
+                    </Text>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => Linking.openURL('https://github.com/swempish/gaziantepkart-client/releases/latest')}
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    borderRadius: 10,
+                    paddingVertical: 14,
+                    paddingHorizontal: 28,
+                    marginLeft: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    shadowColor: COLORS.primary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 5,
+                    elevation: 2,
+                  }}
+                >
+                  <Ionicons name="logo-github" size={22} color="#fff" style={{ marginRight: 10 }} />
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 17, letterSpacing: 1 }}>
+                    Güncelle
+                  </Text>
+                </Pressable>
+              </View>
+            );
+          }
+          return null;
+        })()}
 
         {/* Kayıtlı Kartlar */}
         <Text style={styles.sectionTitle}>Kayıtlı Kartlar</Text>
