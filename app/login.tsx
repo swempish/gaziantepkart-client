@@ -191,6 +191,26 @@ export default function Login() {
                             )}
                         </Pressable>
                     </View>
+                    {/* Bilgilendirme modalını açan buton */}
+                    <Pressable
+                        onPress={() => {
+                            router.push("/info");
+                        }}
+                        style={{
+                            backgroundColor: COLORS.primary,
+                            padding: 12,
+                            borderRadius: 10,
+                            marginTop: 20,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 4,
+                            elevation: 5,
+                            width: '85%',
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: "center", fontSize: 16 }}>Bilgilendirme</Text>
+                    </Pressable>
                 </View>
             </KeyboardAvoidingView>
         </View>
