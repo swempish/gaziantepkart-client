@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Linking, Alert, Animated, Easing, TextInput } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Linking, Alert, Animated, Easing, TextInput, Button } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaskedTextInput } from "react-native-mask-text";
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -173,8 +173,9 @@ export default function HomeScreen() {
           });
         }
       } catch (e) {
+        // Profil alınamadığında -ki bu genelde oturumun süresinin dolduğu anlamına gelir-
         setProfil(null);
-        Alert.alert('Profil alınamadı', 'Ağ veya sunucu hatası.');
+        router.push('/login');
       }
       setProfilLoading(false);
     }
@@ -449,7 +450,9 @@ export default function HomeScreen() {
               </Pressable>
             </>
           ) : (
-            <Text style={styles.errorText}>Giriş yapmalısınız.</Text>
+            <Pressable style={{width: "100%"}} onPress={() => router.push('/login')}>
+              <Text style={{padding: 20, margin: "auto", fontSize: 25, fontWeight: "bold", color: COLORS.primary}}>Giriş yap</Text>
+            </Pressable>
           )}
         </View>
 
@@ -502,6 +505,7 @@ export default function HomeScreen() {
             ))}
             {/* Kart Ekle Kartı */}
             <Pressable
+            disabled={profilLoading || !profil}
               style={[styles.kartEkleCard, { marginRight: 12, height: 250 }]}
               onPress={() => setKartEkleModal(true)}
             >
@@ -522,7 +526,7 @@ export default function HomeScreen() {
             style={styles.maskedInput}
             value={maskedValue}
           />
-          <Pressable style={styles.sorgulaBtn} onPress={kartSorgula} disabled={proccessing}>
+          <Pressable style={styles.sorgulaBtn} onPress={kartSorgula} disabled={proccessing || profilLoading || !profil}>
             {proccessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.sorgulaBtnText}>Sorgula</Text>}
           </Pressable>
           {hata && <Text style={styles.errorText}>{hata}</Text>}
