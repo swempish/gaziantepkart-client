@@ -169,7 +169,7 @@ export default function HomeScreen() {
           router.push('/login');
           return;
         }
-        const resp = await fetch("https://service.kentkart.com/rl1/api/account?region=028&authType=4&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr", {
+        const resp = await fetch("https://service.kentkart.com/rl1/api/account?region=028&authType=4&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr", {
           headers: {
             "Authorization": `Bearer ${apiKey}`,
             "Accept": "application/json, text/plain, */*",
@@ -204,7 +204,7 @@ export default function HomeScreen() {
     async function fetchDuyurular() {
       setDuyuruLoading(true);
       try {
-        const resp = await fetch("https://service.kentkart.com/rl1/api/info/announce?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr");
+        const resp = await fetch("https://service.kentkart.com/rl1/api/info/announce?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr");
         const data = await resp.json();
         setDuyurular(data.announceList || []);
       } catch (e) {
@@ -265,7 +265,7 @@ export default function HomeScreen() {
         setProcessing(false);
         return;
       }
-      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr&authType=4&alias=${unMaskedValue}`;
+      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${unMaskedValue}`;
       const resp = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -332,7 +332,7 @@ export default function HomeScreen() {
         setYeniKartLoading(false);
         return;
       }
-      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr&authType=4&alias=${yeniKartNo}`;
+      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${yeniKartNo}`;
       const resp = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -378,13 +378,13 @@ export default function HomeScreen() {
     setYeniKartLoading(false);
   }
 
-  // Kart bilgisini güncelle (ikonlu animasyonlu)
+  // Kart bilgisini güncelle (ikonlu animasyonlı)
   async function guncelleKartBilgi(id: string, kartNo: string) {
     setGuncellenenKartId(id);
     try {
       const apiKey = await AsyncStorage.getItem('apiKey');
       if (!apiKey) return;
-      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr&authType=4&alias=${kartNo}`;
+      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${kartNo}`;
       const resp = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -577,9 +577,16 @@ export default function HomeScreen() {
                     <Text style={styles.infoMiniAmount}>{kart.sonYuklemeMiktar !== null ? `₺${kart.sonYuklemeMiktar}` : '-'}</Text>
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: "auto" }}>
+                <View style={styles.kayitliKartAltSatir}>
                   <Text style={styles.kayitliKartZaman}>Güncellendi: {new Date(kart.guncellenmeTarihi).toLocaleString('tr-TR')}</Text>
-                  <Pressable style={{padding: 4 }} onPress={() => { setSilModalVisible(true); setSilModalKartId(kart.id); }} disabled={guncellenenKartId === kart.id}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.kayitliKartSilBtn,
+                      pressed && { backgroundColor: '#ffeaea' }
+                    ]}
+                    onPress={() => { setSilModalVisible(true); setSilModalKartId(kart.id); }}
+                    disabled={guncellenenKartId === kart.id}
+                  >
                     <Ionicons name="trash" size={18} color="#D32F2F" />
                   </Pressable>
                 </View>
@@ -967,7 +974,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.primary,
     marginLeft: 20,
@@ -1353,6 +1360,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     textAlign: 'center',
+  },
+  kayitliKartAltSatir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 8,
+  },
+  kayitliKartSilBtn: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 6,
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#D32F2F',
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#ffeaea',
+    minWidth: 30,
+    minHeight: 30,
   },
 });
 
