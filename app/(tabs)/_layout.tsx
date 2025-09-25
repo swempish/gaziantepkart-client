@@ -1,9 +1,11 @@
+
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useTabBarVisibility } from '../../utils/TabBarVisibilityContext';
 
 export default function TabLayout() {
-
+  const { tabBarVisible } = useTabBarVisibility();
   return (
     <Tabs
       screenOptions={{
@@ -18,9 +20,12 @@ export default function TabLayout() {
           bottom: 0,
           borderTopWidth: 0,
           elevation: 10,
+          // tabBarVisible false ise görünmez yap
+          display: tabBarVisible ? 'flex' : 'none',
         },
         tabBarActiveTintColor: '#fff',
         tabBarInactiveTintColor: '#bbdefb',
+        animation: 'fade',
         headerShown: false,
         tabBarIconStyle: {
           alignItems: 'center',

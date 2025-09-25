@@ -93,7 +93,6 @@ export default function HatlarAra() {
         placeholder="Hat kodu veya isimle ara (örn: B01, Gazikent)"
         value={query}
         onChangeText={setQuery}
-        autoFocus
         autoCorrect={false}
         autoCapitalize="none"
         clearButtonMode="while-editing"

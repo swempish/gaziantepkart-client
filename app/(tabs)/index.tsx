@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTabBarVisibility } from '../../utils/TabBarVisibilityContext';
 import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Linking, Alert, Animated, Easing, TextInput, Button } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaskedTextInput } from "react-native-mask-text";
@@ -81,6 +82,7 @@ async function deleteKayitliKart(id: string): Promise<void> {
 }
 
 export default function HomeScreen() {
+  const { setTabBarVisible } = useTabBarVisibility();
   // Profil
   const [profil, setProfil] = useState<any>(null);
   const [profilLoading, setProfilLoading] = useState(true);
@@ -436,6 +438,20 @@ export default function HomeScreen() {
     return new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
   }
 
+  useEffect(() => {
+    setTabBarVisible(!profilLoading);
+  }, [profilLoading]);
+
+  if (profilLoading) {
+    // Tam ekran şık yükleniyor ekranı
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginBottom: 24 }} />
+        <Text style={{ fontSize: 22, color: COLORS.primary, fontWeight: 'bold', marginBottom: 8 }}>Yükleniyor...</Text>
+        <Text style={{ color: COLORS.muted, fontSize: 15 }}>Profil bilgileriniz getiriliyor</Text>
+      </View>
+    );
+  }
   return (
     <SafeAreaView style={styles.container}>
   <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>

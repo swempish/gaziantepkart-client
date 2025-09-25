@@ -1,26 +1,44 @@
 import React from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-const bgImage = require('../../assets/images/gaziantep.jpg');
+// Arka plan resmini buraya ekliyoruz
+const backgroundImage = require('../../assets/images/tram_stop.jpg');
 
 export default function HatlarScreen() {
   const router = useRouter();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Hatlar</Text>
-      <Text style={styles.desc}>Gaziantep'teki tüm otobüs ve tramvay hatlarını keşfet.</Text>
-      <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => router.push('/hatlar/ara')}>
-        <ImageBackground source={bgImage} style={styles.cardBg} imageStyle={{ borderRadius: 18, opacity: 0.7 }}>
-          <View style={styles.cardContent}>
-            <Ionicons name="search" size={38} color="#1976D2" style={{ marginBottom: 8 }} />
-            <Text style={styles.cardTitle}>Hatları Ara</Text>
-            <Text style={styles.cardDesc}>Kod veya isimle otobüs/tramvay bul</Text>
-          </View>
-        </ImageBackground>
-      </TouchableOpacity>
-    </View>
+    <ImageBackground source={backgroundImage} style={styles.container}>
+      {/* Arka plan resminin üzerine gelen durum çubuğu metinlerini beyaz yapar */}
+      <StatusBar barStyle="light-content" />
+      
+      {/* SafeAreaView, içeriğin telefon çentikleri altına girmesini engeller */}
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Hatlar</Text>
+          <Text style={styles.subtitle}>Gaziantep'teki tüm otobüs ve tramvay hatlarını keşfet.</Text>
+        </View>
+
+        <View style={styles.content}>
+          <TouchableOpacity 
+            style={styles.card} 
+            activeOpacity={0.8} 
+            onPress={() => router.push('/hatlar/ara')}
+          >
+            <View style={styles.cardIconContainer}>
+              <Ionicons name="search" size={28} color="#FFFFFF" />
+            </View>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.cardTitle}>Hatları Ara</Text>
+              <Text style={styles.cardDescription}>Kod veya isimle otobüs/tramvay bul</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#555" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
@@ -32,61 +50,82 @@ HatlarScreen.options = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    backgroundColor: '#F7FAFC',
-    paddingTop: 48,
-    paddingHorizontal: 18,
+    // Arka plan resminin tüm alanı kaplamasını sağlar
+  },
+  safeArea: {
+    flex: 1,
+    // Arka plan resminin üzerine hafif bir karartma ekleyerek metin okunabilirliğini artırır
+    backgroundColor: 'rgba(0, 0, 0, 0.35)', 
+  },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 24,
+    alignItems: 'flex-start', // Metinleri sola hizala
   },
   title: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: 8,
-    marginTop: 8,
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 3,
   },
-  desc: {
-    fontSize: 16,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 24,
-    opacity: 0.85,
+  subtitle: {
+    fontSize: 18,
+    color: '#E0E0E0',
+    marginTop: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center', // Kartı dikeyde ortalar
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   card: {
     width: '100%',
-    maxWidth: 400,
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginTop: 12,
-    shadowColor: '#1976D2',
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 4,
+    maxWidth: 500,
+    flexDirection: 'row', // İçerikleri yatayda hizalar
+    alignItems: 'center',
+    // "Buzlu Cam" (Frosted Glass) efekti
+    backgroundColor: 'rgba(255, 255, 255, 0.85)', 
+    borderRadius: 20,
+    padding: 16,
+    // Modern ve yumuşak bir gölge
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    // Cam efektini güçlendirmek için ince bir çerçeve
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
-  cardBg: {
-    width: '100%',
-    height: 170,
+  cardIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25, // Daire şekli için
+    backgroundColor: '#1976D2', // Ana tema rengi
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 16,
   },
-  cardContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 18,
-    padding: 18,
-    margin: 10,
+  cardTextContainer: {
+    flex: 1, // Kalan tüm boşluğu doldurur
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: 2,
+    color: '#1A202C', // Koyu renk metin
   },
-  cardDesc: {
-    fontSize: 15,
-    color: '#333',
-    opacity: 0.85,
+  cardDescription: {
+    fontSize: 14,
+    color: '#4A5568', // Daha yumuşak bir gri
+    marginTop: 2,
   },
 });
