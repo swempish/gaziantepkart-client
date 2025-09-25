@@ -163,7 +163,7 @@ export default function DurakDetayScreen() {
         <Text style={styles.sectionTitle}>Durağa Yaklaşan Otobüsler</Text>
         <FlatList
           data={busList}
-          keyExtractor={(item) => item.busId.toString()}
+          keyExtractor={(item, index) => `bus-${item.busId}-${index}`}
           renderItem={renderBusItem}
           ListEmptyComponent={() => renderEmptyState("Şu anda durağa yaklaşan otobüs bulunmuyor.")}
           scrollEnabled={false} // ScrollView içinde olduğu için kendi scroll'unu kapattık
@@ -173,7 +173,7 @@ export default function DurakDetayScreen() {
         <Text style={styles.sectionTitle}>Bu Duraktan Geçen Hatlar</Text>
         <FlatList
           data={routeList}
-          keyExtractor={(item) => item.routeCode.toString()}
+          keyExtractor={(item, index) => `route-${item.routeCode}-${index}`}
           renderItem={renderRouteItem}
           ListEmptyComponent={() => renderEmptyState("Bu duraktan geçen hat bilgisi bulunamadı.")}
           scrollEnabled={false}

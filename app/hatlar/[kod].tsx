@@ -54,7 +54,12 @@ export default function HatDetayScreen() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedBusCoord, setSelectedBusCoord] = useState<{lat: number, lng: number} | null>(null);
   const webViewRef = useRef<any>(null);
+  const router = useRouter();
+  const [direction, setDirection] = useState(1);
 
+  const toggleDirection = () => {
+    setDirection(prevDirection => (prevDirection === 1 ? 0 : 1));
+  };
   // Kullanıcı konumu iste
   useEffect(() => {
     (async () => {
@@ -76,13 +81,46 @@ export default function HatDetayScreen() {
     }
   }, [data, navigation]);
 
+  // Otobüs konumlarını periyodik olarak güncelle
+  useEffect(() => {
+    if (!webViewRef.current || !data?.pathList?.[0]) return;
+
+    const fetchBusLocations = async () => {
+      try {
+        const res = await fetch(
+          `https://service.kentkart.com/rl1/web/pathInfo?region=028&lang=tr&authType=4&direction=${direction}&displayRouteCode=${encodeURIComponent(String(kod))}&resultType=111111`,
+        );
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json?.pathList?.[0]?.busList) {
+          webViewRef.current.postMessage(JSON.stringify({
+            type: 'updateBuses',
+            buses: json.pathList[0].busList
+          }));
+        }
+      } catch (e) {
+        console.error('Error fetching bus locations:', e);
+      }
+    };
+
+    // Her 6 saniyede bir güncelle
+    intervalRef.current = setInterval(fetchBusLocations, 6000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [kod, direction, webViewRef.current]);
+
   // API'den veri çek
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `https://service.kentkart.com/rl1/web/pathInfo?region=028&lang=tr&authType=4&direction=1&displayRouteCode=${encodeURIComponent(String(kod))}&resultType=111111`,
+        `https://service.kentkart.com/rl1/web/pathInfo?region=028&lang=tr&authType=4&direction=${direction}&displayRouteCode=${encodeURIComponent(String(kod))}&resultType=111111`,
         {
           credentials: "omit",
           headers: {
@@ -108,7 +146,7 @@ export default function HatDetayScreen() {
     } finally {
       setLoading(false);
     }
-  }, [kod]);
+  }, [kod, direction]);
 
   useEffect(() => {
     if (data?.pathList?.[0]?.busStopList) {
@@ -122,6 +160,10 @@ export default function HatDetayScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchData]);
+
+  useEffect(() => {
+    fetchData();
+  }, [direction]);
 
   // Arama sorgusu değiştikçe durakları filtrele
   useEffect(() => {
@@ -187,6 +229,21 @@ export default function HatDetayScreen() {
     }
   };
 
+  // WebView'dan gelen mesajları işle
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'navigateToStop' && data.stopId) {
+        router.push({
+          pathname: '/durak/[stopId]',
+          params: { stopId: data.stopId },
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing WebView message:', error);
+    }
+  };
+
   // Rota noktaları (Polyline için)
   const pointListPolyline = path.pointList || [];
   const routeCoordinates: { latitude: number; longitude: number }[] = pointListPolyline.map((p: any) => ({
@@ -196,15 +253,15 @@ export default function HatDetayScreen() {
 
 
   // Harita merkezi: kullanıcı konumu varsa ona yakın başlat, yoksa rota/marker ortalaması
-  let mapCenter = { lat: 37.0662, lng: 37.3833 };
+  let mapCenter = { lat: 37.0662, lng: 37.3833, zoom: 13 };
   if (userLocation) {
-    mapCenter = { lat: userLocation.latitude, lng: userLocation.longitude };
+    mapCenter = { lat: userLocation.latitude, lng: userLocation.longitude, zoom: 15 };
   } else if (routeCoordinates.length > 1) {
     const avgLat = routeCoordinates.reduce((sum, p) => sum + p.latitude, 0) / routeCoordinates.length;
     const avgLng = routeCoordinates.reduce((sum, p) => sum + p.longitude, 0) / routeCoordinates.length;
-    mapCenter = { lat: avgLat, lng: avgLng };
+    mapCenter = { lat: avgLat, lng: avgLng, zoom: 13 };
   } else if (allMarkers.length) {
-    mapCenter = { lat: allMarkers[0].lat, lng: allMarkers[0].lng };
+    mapCenter = { lat: allMarkers[0].lat, lng: allMarkers[0].lng, zoom: 13 };
   }
 
   return (
@@ -219,6 +276,10 @@ export default function HatDetayScreen() {
           {path.tripShortName && (
             <Text style={styles.aciklama}>{path.tripShortName}</Text>
           )}
+          <TouchableOpacity style={styles.directionButton} onPress={toggleDirection}>
+            <Ionicons name="swap-horizontal" size={20} color={themeColors.white} />
+            <Text style={styles.directionButtonText}>Yön Değiştir</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Harita */}
@@ -236,11 +297,12 @@ export default function HatDetayScreen() {
               busList,
               stopList,
               userLocation,
-              mapCenter
+              mapCenter,
             }) }}
             javaScriptEnabled={true}
             domStorageEnabled={true}
             scrollEnabled={false}
+            onMessage={handleWebViewMessage}
           />
         </View>
 
@@ -576,6 +638,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     marginHorizontal: 16,
+  },
+  directionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: themeColors.secondary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    marginTop: 16,
+  },
+  directionButtonText: {
+    color: themeColors.white,
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontSize: 16,
   },
   center: {
     flex: 1,

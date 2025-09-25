@@ -15,7 +15,6 @@ export default function DurakStackLayout() {
         },
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
     </Stack>
   );
 }
