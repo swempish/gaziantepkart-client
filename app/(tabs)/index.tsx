@@ -438,7 +438,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+  <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Üstte Gaziantep görseli, şehir adı ve tarih */}
         <View style={styles.topBannerBox}>
           <Image source={gaziantepImage} style={styles.topBannerImage} />
