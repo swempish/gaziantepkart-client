@@ -22,7 +22,7 @@ export function getLeafletHtml(params: {
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      var map = L.map('map').setView([${mapCenter.lat},${mapCenter.lng}], ${mapCenter.zoom});
+      var map = L.map('map').setView([${mapCenter.lat},${mapCenter.lng}], 13); // Başlangıç zoom seviyesini sabit tutalım, fitBounds ayarlayacak
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap'

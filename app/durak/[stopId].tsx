@@ -1,7 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, FlatList, ScrollView } from 'react-native';
+import React, { useEffect, useState, useLayoutEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  ActivityIndicator, 
+  StyleSheet, 
+  FlatList, 
+  ScrollView,
+  SafeAreaView // Daha güvenli bir alan için
+} from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { useLayoutEffect } from 'react';
+// Görsel zenginlik katmak için ikonları import ediyoruz
+import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons'; 
+
+// Tema renklerini bir obje olarak tanımlayalım, yönetmesi daha kolay olur.
+const themeColors = {
+  primary: '#1976D2',    // Ana Mavi
+  secondary: '#43A047',  // Ana Yeşil
+  background: '#F0F4F8', // Daha yumuşak bir arka plan
+  cardBackground: '#FFFFFF',
+  textPrimary: '#2D3748',
+  textSecondary: '#718096',
+  accent: '#FFC107',     // Plaka gibi alanlar için dikkat çekici bir renk
+  error: '#D32F2F',
+};
 
 export default function DurakDetayScreen() {
   const { stopId } = useLocalSearchParams();
@@ -9,9 +30,9 @@ export default function DurakDetayScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
-  // Navigation başlığını durak adıyla güncelle
+
   useLayoutEffect(() => {
-    if (data && data.stopInfo && data.stopInfo.busStopName) {
+    if (data?.stopInfo?.busStopName) {
       navigation.setOptions({ title: data.stopInfo.busStopName });
     } else {
       navigation.setOptions({ title: 'Durak Detayı' });
@@ -22,6 +43,7 @@ export default function DurakDetayScreen() {
     if (!stopId) return;
     setLoading(true);
     setError(null);
+    // API isteği ve diğer mantıklar aynı kalıyor...
     fetch(
       `https://service.kentkart.com/rl1/web/nearest/bus?region=028&lang=tr&authType=4&accuracy=0&lat=0&lng=0&busStopId=${stopId}`,
       {
@@ -55,171 +77,264 @@ export default function DurakDetayScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1976D2" />
-        <Text style={{ marginTop: 12, color: '#1976D2', fontWeight: 'bold' }}>Yükleniyor...</Text>
+        <ActivityIndicator size="large" color={themeColors.primary} />
+        <Text style={styles.loadingText}>Yükleniyor...</Text>
       </View>
     );
   }
+
   if (error || !data) {
     return (
       <View style={styles.center}>
-        <Text style={styles.notFound}>{error || 'Durak bulunamadı.'}</Text>
+        <MaterialCommunityIcons name="bus-stop-uncovered" size={64} color={themeColors.error} />
+        <Text style={styles.errorText}>{error || 'Durak bulunamadı.'}</Text>
       </View>
     );
   }
 
-  const stopInfo = data.stopInfo;
-  const busList = data.busList || [];
-  const routeList = data.routeList || [];
+  const { stopInfo, busList = [], routeList = [] } = data;
+
+  // Yaklaşan otobüsler için render item fonksiyonu
+  const renderBusItem = ({ item }: { item: any }) => (
+    <View style={styles.card}>
+      <View style={styles.cardIconContainer}>
+        <FontAwesome name="bus" size={24} color={themeColors.primary} />
+      </View>
+      <View style={styles.cardContent}>
+        <View style={styles.cardTitleContainer}>
+          <View style={[styles.routeBadge, { backgroundColor: item.routeColor ? `#${item.routeColor}` : themeColors.primary }]}>
+            <Text style={[styles.routeBadgeText, { color: item.routeTextColor ? `#${item.routeTextColor}` : '#FFFFFF' }]}>{item.displayRouteCode}</Text>
+          </View>
+          <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.headSign}</Text>
+          {item.disabledPerson === '1' && (
+            <FontAwesome name="wheelchair" size={18} color={themeColors.textPrimary} style={{ marginLeft: 8 }} />
+          )}
+        </View>
+        <View style={styles.plateContainer}>
+          <MaterialCommunityIcons name="card-account-details-outline" size={16} color={themeColors.textSecondary} />
+          <Text style={styles.plateText}>{item.plate}</Text>
+        </View>
+      </View>
+      <View style={styles.cardRightContent}>
+        <Text style={styles.timeText}>{item.timeDiff}</Text>
+        <Text style={styles.timeLabel}>dk</Text>
+      </View>
+    </View>
+  );
+
+  // Durağa uğrayan hatlar için render item fonksiyonu
+  const renderRouteItem = ({ item }: { item: any }) => (
+    <View style={styles.card}>
+       <View style={[styles.cardIconContainer, { backgroundColor: `${themeColors.secondary}20` }]}>
+        <MaterialCommunityIcons name="routes" size={24} color={themeColors.secondary} />
+      </View>
+      <View style={styles.cardContent}>
+        <View style={styles.cardTitleContainer}>
+            <View style={[styles.routeBadge, { backgroundColor: item.routeColor ? `#${item.routeColor}` : themeColors.secondary }]}>
+                <Text style={[styles.routeBadgeText, { color: item.routeTextColor ? `#${item.routeTextColor}` : '#FFFFFF' }]}>{item.displayRouteCode}</Text>
+            </View>
+            <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.headSign}</Text>
+        </View>
+      </View>
+      <View style={styles.cardRightContentMinimal}>
+        <Text style={styles.nextTripText}>Sonraki Varış: {item.nextTripArrivalTime || '-'}</Text>
+      </View>
+    </View>
+  );
+
+  // Bilgi bulunamadığında gösterilecek component
+  const renderEmptyState = (message: string) => (
+      <View style={styles.emptyStateContainer}>
+        <MaterialCommunityIcons name="information-outline" size={24} color={themeColors.textSecondary} />
+        <Text style={styles.emptyStateText}>{message}</Text>
+      </View>
+  );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{stopInfo.busStopName}</Text>
-      <Text style={styles.subtitle}>ID: {stopInfo.busStopid}</Text>
-      <Text style={styles.sectionTitle}>Durağa Yaklaşan Otobüsler</Text>
-      {busList.length === 0 ? (
-        <Text style={styles.info}>Şu anda yaklaşan otobüs yok.</Text>
-      ) : (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Durak Başlığı ve ID'si */}
+        <View style={styles.header}>
+          <Text style={styles.title}>{stopInfo.busStopName}</Text>
+          <Text style={styles.subtitle}>Durak No: {stopInfo.busStopid}</Text>
+        </View>
+
+        {/* Bölüm Başlıkları ve Listeler */}
+        <Text style={styles.sectionTitle}>Durağa Yaklaşan Otobüsler</Text>
         <FlatList
           data={busList}
-          keyExtractor={(item) => item.busId}
-          renderItem={({ item }) => (
-            <View style={styles.busCard}>
-              <Text style={styles.busLabel}>{item.displayRouteCode} - {item.headSign}</Text>
-              <Text style={styles.busPlate}>{item.plate}</Text>
-              <Text style={styles.busInfo}>Kalan Durak: {item.stopDiff} | Kalan Dakika: {item.timeDiff}</Text>
-            </View>
-          )}
-          horizontal
-          showsHorizontalScrollIndicator={true}
-          contentContainerStyle={{ gap: 12, paddingVertical: 8 }}
+          keyExtractor={(item) => item.busId.toString()}
+          renderItem={renderBusItem}
+          ListEmptyComponent={() => renderEmptyState("Şu anda durağa yaklaşan otobüs bulunmuyor.")}
+          scrollEnabled={false} // ScrollView içinde olduğu için kendi scroll'unu kapattık
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />} // Kartlar arasına boşluk
         />
-      )}
-      <Text style={styles.sectionTitle}>Bu Durağa Uğrayan Hatlar</Text>
-      {routeList.length === 0 ? (
-        <Text style={styles.info}>Hat bilgisi yok.</Text>
-      ) : (
+
+        <Text style={styles.sectionTitle}>Bu Duraktan Geçen Hatlar</Text>
         <FlatList
           data={routeList}
-          keyExtractor={(item) => item.routeCode}
-          renderItem={({ item }) => (
-            <View style={styles.routeCard}>
-              <Text style={styles.routeLabel}>{item.displayRouteCode} - {item.headSign}</Text>
-              <Text style={styles.routeTime}>Sonraki Varış: {item.nextTripArrivalTime || '-'}</Text>
-            </View>
-          )}
-          horizontal
-          showsHorizontalScrollIndicator={true}
-          contentContainerStyle={{ gap: 12, paddingVertical: 8 }}
+          keyExtractor={(item) => item.routeCode.toString()}
+          renderItem={renderRouteItem}
+          ListEmptyComponent={() => renderEmptyState("Bu duraktan geçen hat bilgisi bulunamadı.")}
+          scrollEnabled={false}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         />
-      )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: themeColors.background,
+  },
   container: {
-    alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#F7FAFC',
-    minHeight: '100%',
+    padding: 16,
     paddingBottom: 48,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F7FAFC',
+    backgroundColor: themeColors.background,
+    padding: 20,
   },
-  notFound: {
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: themeColors.primary,
+    fontWeight: '600',
+  },
+  errorText: {
     fontSize: 18,
-    color: '#D32F2F',
+    color: themeColors.error,
     fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  header: {
+    marginBottom: 24,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: 4,
-    letterSpacing: 1,
+    color: themeColors.textPrimary,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 15,
-    color: '#444',
-    opacity: 0.85,
-    textAlign: 'center',
-    marginBottom: 18,
+    fontSize: 16,
+    color: themeColors.textSecondary,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+    marginBottom: 16,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: themeColors.primary,
+    paddingLeft: 8,
+  },
+  card: {
+    backgroundColor: themeColors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cardIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: `${themeColors.primary}20`, // %20 opacity ile mavi
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  routeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  routeBadgeText: {
     fontWeight: 'bold',
-    color: '#1976D2',
-    marginTop: 18,
-    marginBottom: 8,
-    marginLeft: 4,
+    fontSize: 14,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: themeColors.textPrimary,
+    flex: 1, 
+  },
+  plateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E2E8F0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
     alignSelf: 'flex-start',
   },
-  info: {
-    fontSize: 15,
-    color: '#888',
-    marginBottom: 8,
-    textAlign: 'center',
+  plateText: {
+    color: themeColors.textPrimary,
+    fontWeight: 'bold',
+    marginLeft: 6,
+    fontSize: 14,
   },
-  busCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+  cardRightContent: {
     alignItems: 'center',
-    width: 220,
-    shadowColor: '#1976D2',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    marginLeft: 16,
   },
-  busLabel: {
+  timeText: {
+    fontSize: 28,
     fontWeight: 'bold',
-    fontSize: 16,
-    color: '#1976D2',
-    marginBottom: 4,
-    textAlign: 'center',
+    color: themeColors.primary,
   },
-  busPlate: {
-    fontSize: 15,
-    color: '#222',
-    backgroundColor: '#e3e8ef',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    marginBottom: 4,
+  timeLabel: {
+    fontSize: 14,
+    color: themeColors.textSecondary,
+    marginTop: -4,
   },
-  busInfo: {
+  cardRightContentMinimal: {
+    marginLeft: 16,
+  },
+  nextTripText: {
     fontSize: 13,
-    color: '#666',
-    marginBottom: 2,
+    color: themeColors.secondary,
+    fontWeight: '600',
   },
-  routeCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
+  emptyStateContainer: {
+    backgroundColor: themeColors.cardBackground,
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
-    width: 200,
-    shadowColor: '#43A047',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: 'center',
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#CBD5E0',
   },
-  routeLabel: {
-    fontWeight: 'bold',
+  emptyStateText: {
+    marginTop: 8,
     fontSize: 15,
-    color: '#43A047',
-    marginBottom: 2,
+    color: themeColors.textSecondary,
     textAlign: 'center',
-  },
-  routeTime: {
-    fontSize: 13,
-    color: '#888',
   },
 });

@@ -6,6 +6,19 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { getLeafletHtml } from '../../utils/leafletHtml';
+import { TextInput } from 'react-native-gesture-handler';
+
+const themeColors = {
+  primary: '#1976D2',
+  secondary: '#43A047',
+  background: '#F0F4F8',
+  cardBackground: '#FFFFFF',
+  textPrimary: '#2D3748',
+  textSecondary: '#718096',
+  accent: '#FFC107',
+  error: '#D32F2F',
+  white: '#FFFFFF',
+};
 
 type Bus = {
   busId: string;
@@ -36,6 +49,8 @@ export default function HatDetayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredStops, setFilteredStops] = useState<Stop[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedBusCoord, setSelectedBusCoord] = useState<{lat: number, lng: number} | null>(null);
   const webViewRef = useRef<any>(null);
@@ -96,19 +111,40 @@ export default function HatDetayScreen() {
   }, [kod]);
 
   useEffect(() => {
+    if (data?.pathList?.[0]?.busStopList) {
+      setFilteredStops(data.pathList[0].busStopList);
+    }
+  }, [data]);
+
+  useEffect(() => {
     fetchData();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchData]);
 
+  // Arama sorgusu değiştikçe durakları filtrele
+  useEffect(() => {
+    if (data?.pathList?.[0]?.busStopList) {
+      if (searchQuery.trim() === '') {
+        setFilteredStops(data.pathList[0].busStopList);
+      } else {
+        const lowercasedQuery = searchQuery.toLowerCase();
+        const filtered = data.pathList[0].busStopList.filter((stop: Stop) =>
+          stop.stopName.toLowerCase().includes(lowercasedQuery)
+        );
+        setFilteredStops(filtered);
+      }
+    }
+  }, [searchQuery, data]);
+
   // --- HOOKS SONU ---
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1976D2" />
-        <Text style={{ marginTop: 12, color: '#1976D2', fontWeight: 'bold' }}>Yükleniyor...</Text>
+        <ActivityIndicator size="large" color={themeColors.primary} />
+        <Text style={{ marginTop: 12, color: themeColors.primary, fontWeight: 'bold' }}>Yükleniyor...</Text>
       </View>
     );
   }
@@ -160,29 +196,30 @@ export default function HatDetayScreen() {
 
 
   // Harita merkezi: kullanıcı konumu varsa ona yakın başlat, yoksa rota/marker ortalaması
-  let mapCenter = { lat: 37.0662, lng: 37.3833, zoom: 13 };
+  let mapCenter = { lat: 37.0662, lng: 37.3833 };
   if (userLocation) {
-    mapCenter = { lat: userLocation.latitude, lng: userLocation.longitude, zoom: 15 };
+    mapCenter = { lat: userLocation.latitude, lng: userLocation.longitude };
   } else if (routeCoordinates.length > 1) {
     const avgLat = routeCoordinates.reduce((sum, p) => sum + p.latitude, 0) / routeCoordinates.length;
     const avgLng = routeCoordinates.reduce((sum, p) => sum + p.longitude, 0) / routeCoordinates.length;
-    mapCenter = { lat: avgLat, lng: avgLng, zoom: 13 };
+    mapCenter = { lat: avgLat, lng: avgLng };
   } else if (allMarkers.length) {
-    mapCenter = { lat: allMarkers[0].lat, lng: allMarkers[0].lng, zoom: 13 };
+    mapCenter = { lat: allMarkers[0].lat, lng: allMarkers[0].lng };
   }
 
   return (
     <>
-      <StatusBar backgroundColor="#1976D2" style="light" />
-  <ScrollView contentContainerStyle={styles.container} scrollEnabled={scrollEnabled}>
-        <View style={styles.imageBox}>
-          <Ionicons name="bus" size={64} color="#1976D2" />
+      <StatusBar backgroundColor={themeColors.primary} style="light" />
+      <ScrollView contentContainerStyle={styles.container} scrollEnabled={scrollEnabled}>
+        <View style={styles.headerContainer}>
+          <View style={[styles.routeBadge, { backgroundColor: path.routeColor ? `#${path.routeColor}` : themeColors.primary }]}>
+            <Text style={[styles.routeBadgeText, { color: path.routeTextColor ? `#${path.routeTextColor}` : themeColors.white }]}>{path.displayRouteCode}</Text>
+          </View>
+          <Text style={styles.isim}>{path.headSign}</Text>
+          {path.tripShortName && (
+            <Text style={styles.aciklama}>{path.tripShortName}</Text>
+          )}
         </View>
-        <Text style={styles.kod}>{path.displayRouteCode}</Text>
-        <Text style={styles.isim}>{path.headSign}</Text>
-        {path.tripShortName ? (
-          <Text style={styles.aciklama}>{path.tripShortName}</Text>
-        ) : null}
 
         {/* Harita */}
         <View
@@ -226,13 +263,29 @@ export default function HatDetayScreen() {
         {stopList.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle }>Duraklar</Text>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={themeColors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Durak adı ara..."
+                placeholderTextColor={themeColors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
             <FlatList
-              data={stopList}
+              data={filteredStops}
               keyExtractor={(item) => item.stopId}
               renderItem={({ item }) => <StopCard stop={item} />}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 12, paddingVertical: 8 }}
+              scrollEnabled={false} // Ana ScrollView kaydıracağı için
+              contentContainerStyle={{ gap: 12 }}
+              ListEmptyComponent={
+                <View style={styles.emptyListContainer}>
+                  <Text style={styles.emptyListText}>
+                    Aramanızla eşleşen durak bulunamadı.
+                  </Text>
+                </View>
+              }
             />
           </View>
         )}
@@ -245,22 +298,37 @@ const BusCard = memo(({ bus, onShowOnMap }: { bus: Bus, onShowOnMap: (bus: Bus) 
   <View style={styles.busCard}>
     <View style={styles.busCardRow}>
       <View style={styles.busIconBox}>
-        <MaterialCommunityIcons name="bus" size={40} color="#1976D2" />
+        <MaterialCommunityIcons name="bus" size={32} color={themeColors.primary} />
       </View>
       <View style={styles.busCardInfo}>
-        <Text style={styles.busLabel}>{bus.busLabel}</Text>
+        <Text style={styles.busLabel} numberOfLines={1}>{bus.busLabel}</Text>
         <View style={styles.busPlateRow}>
           <Text style={styles.busPlate}>{bus.plateNumber}</Text>
-          {bus.disabledPerson === '1' && (
-            <FontAwesome5 name="wheelchair" size={20} color="#1976D2" style={{ marginLeft: 8 }} />
-          )}
         </View>
-        {bus.ac === '1' && <Text style={styles.busInfo}>Klima: Var</Text>}
-        {bus.bike === '1' && <Text style={styles.busInfo}>Bisiklet: Var</Text>}
       </View>
     </View>
+    <View style={styles.busInfoContainer}>
+      {bus.disabledPerson === '1' && (
+        <View style={styles.busInfoChip}>
+          <FontAwesome5 name="wheelchair" size={14} color={themeColors.textSecondary} />
+          <Text style={styles.busInfoText}>Erişilebilir</Text>
+        </View>
+      )}
+      {bus.ac === '1' && (
+        <View style={styles.busInfoChip}>
+          <MaterialCommunityIcons name="air-conditioner" size={16} color={themeColors.textSecondary} />
+          <Text style={styles.busInfoText}>Klimalı</Text>
+        </View>
+      )}
+      {bus.bike === '1' && (
+        <View style={styles.busInfoChip}>
+          <Ionicons name="bicycle" size={16} color={themeColors.textSecondary} />
+          <Text style={styles.busInfoText}>Bisikletli</Text>
+        </View>
+      )}
+    </View>
     <TouchableOpacity style={styles.showOnMapBtn} onPress={() => onShowOnMap(bus)}>
-        <Ionicons name="location-sharp" size={28} color="#1976D2" />
+        <Ionicons name="location-sharp" size={18} color={themeColors.primary} />
         <Text style={styles.showOnMapText}>Haritada Göster</Text>
     </TouchableOpacity>
   </View>
@@ -270,15 +338,21 @@ const BusCard = memo(({ bus, onShowOnMap }: { bus: Bus, onShowOnMap: (bus: Bus) 
 const StopCard = memo(({ stop }: { stop: Stop }) => {
   const router = useRouter();
   const handlePress = () => {
-    router.push(`/durak/${stop.stopId}`);
+    router.push({
+      pathname: '/durak/[stopId]',
+      params: { stopId: stop.stopId },
+    });
   };
   return (
     <TouchableOpacity style={styles.stopCard} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.stopIconBox}>
-        <MaterialCommunityIcons name="bus-stop" size={28} color="#43A047" />
+        <MaterialCommunityIcons name="bus-stop" size={24} color={themeColors.secondary} />
       </View>
-      <Text style={styles.stopName}>{stop.stopName}</Text>
-      <Text style={styles.stopId}>ID: {stop.stopId}</Text>
+      <View style={styles.stopInfoContainer}>
+        <Text style={styles.stopName} numberOfLines={2}>{stop.stopName}</Text>
+        <Text style={styles.stopId}>Durak No: {stop.stopId}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={24} color={themeColors.textSecondary} />
     </TouchableOpacity>
   );
 });
@@ -287,23 +361,36 @@ const styles = StyleSheet.create({
     
   container: {
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#F7FAFC',
+    padding: 16,
+    backgroundColor: themeColors.background,
     minHeight: '100%',
     paddingBottom: 48,
   },
+  headerContainer: {
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: themeColors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: themeColors.textPrimary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
+  },
   mapBox: {
     width: '100%',
-    height: 320,
-    borderRadius: 18,
+    height: 300,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginVertical: 18,
-    backgroundColor: '#e3e8ef',
+    marginVertical: 16,
+    backgroundColor: themeColors.cardBackground,
     borderWidth: 1,
-    borderColor: '#e3e8ef',
-    shadowColor: '#1976D2',
+    borderColor: '#E2E8F0',
+    shadowColor: themeColors.textPrimary,
     shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 2,
   },
   map: {
@@ -313,161 +400,192 @@ const styles = StyleSheet.create({
   },
   section: {
     width: '100%',
-    marginTop: 18,
+    marginTop: 16,
   },
   sectionTitle: {
     fontSize: 18,
+    fontWeight: '700',
+    color: themeColors.textPrimary,
+    marginBottom: 12,
+    paddingLeft: 8,
+  },
+  routeBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  routeBadgeText: {
     fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: 8,
-    marginLeft: 4,
+    fontSize: 24,
   },
   busCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 22,
-    flexDirection: 'column',
-    alignItems: 'center',
-    width: 340,
-    height: 180,
-    shadowColor: '#1976D2',
-    shadowOpacity: 0.10,
+    backgroundColor: themeColors.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    width: 280, 
+    shadowColor: themeColors.textPrimary,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-    marginRight: 12,
+    justifyContent: 'space-between',
   },
   busCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
   busIconBox: {
-    backgroundColor: '#e3e8ef',
-    borderRadius: 36,
-    padding: 10,
-    marginRight: 16,
-    alignItems: 'center',
+    backgroundColor: `${themeColors.primary}20`,
+    borderRadius: 25,
+    width: 50,
+    height: 50,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   busCardInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   busLabel: {
     fontWeight: 'bold',
-    fontSize: 17,
-    color: '#1976D2',
+    fontSize: 16,
+    color: themeColors.textPrimary,
     marginBottom: 4,
   },
   busPlateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
   },
   busPlate: {
-    fontSize: 16,
-    color: '#222',
-    backgroundColor: '#e3e8ef',
+    fontSize: 14,
+    color: themeColors.textPrimary,
+    backgroundColor: themeColors.background,
     borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     fontWeight: 'bold',
-    letterSpacing: 1,
   },
-  busInfo: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 2,
+  busInfoContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  busInfoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: themeColors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  busInfoText: {
+    marginLeft: 5,
+    fontSize: 12,
+    color: themeColors.textSecondary,
+    fontWeight: '600',
   },
   stopCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: themeColors.cardBackground,
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    width: 140,
-    shadowColor: '#43A047',
-    shadowOpacity: 0.06,
+    shadowColor: themeColors.textPrimary,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   stopIconBox: {
-    backgroundColor: '#e3f6e3',
-    borderRadius: 24,
-    padding: 6,
-    marginBottom: 8,
+    backgroundColor: `${themeColors.secondary}20`,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  stopInfoContainer: {
+    flex: 1,
+    marginRight: 8,
   },
   stopName: {
     fontWeight: 'bold',
     fontSize: 15,
-    color: '#43A047',
+    color: themeColors.textPrimary,
     marginBottom: 2,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   showOnMapBtn: {
-    marginLeft: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    width: '100%',
+    backgroundColor: `${themeColors.primary}20`,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 12,
   },
   showOnMapText: {
-    fontSize: 13,
-    color: '#1976D2',
+    fontSize: 14,
+    color: themeColors.primary,
     fontWeight: 'bold',
-    marginTop: 2,
+    marginLeft: 8,
   },
   stopId: {
     fontSize: 13,
-    color: '#888',
+    color: themeColors.textSecondary,
   },
-  back: {
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-    marginLeft: -8,
-  },
-  imageBox: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#fff',
+  emptyListContainer: {
+    padding: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-    shadowColor: '#1976D2',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  kod: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: 4,
-    letterSpacing: 1,
+  emptyListText: {
+    fontSize: 16,
+    color: themeColors.textSecondary,
+    textAlign: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: themeColors.cardBackground,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 48,
+    fontSize: 16,
+    color: themeColors.textPrimary,
   },
   isim: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
+    color: themeColors.textPrimary,
     textAlign: 'center',
+    marginHorizontal: 16,
   },
   aciklama: {
-    fontSize: 15,
-    color: '#444',
-    opacity: 0.85,
+    fontSize: 14,
+    color: themeColors.textSecondary,
     textAlign: 'center',
-    marginBottom: 18,
+    marginTop: 8,
+    marginHorizontal: 16,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F7FAFC',
+    backgroundColor: themeColors.background,
   },
   notFound: {
     fontSize: 18,
-    color: '#D32F2F',
+    color: themeColors.error,
     fontWeight: 'bold',
   },
   debugBox: {
