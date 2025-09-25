@@ -65,7 +65,8 @@ export default function HatlarAra() {
     return hatlar.filter(
       h =>
         normalize(h.displayRouteCode).includes(nq) ||
-        normalize(h.name).includes(nq)
+        normalize(h.name).includes(nq) ||
+        (nq === 'tramvay' && ['T1', 'T2', 'T3'].includes(h.displayRouteCode))
     );
   }, [debouncedQuery, hatlar]);
 
@@ -121,7 +122,32 @@ const HatItem = memo(({ item, onPress }: HatItemProps) => (
   <TouchableOpacity style={styles.item} onPress={onPress}>
     <Ionicons name="bus" size={22} color="#1976D2" style={{ marginRight: 10 }} />
     <View>
-      <Text style={styles.kod}>{item.displayRouteCode}</Text>
+      <View
+        style={[
+          {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        marginRight: 10,
+        alignSelf: 'flex-start',
+          },
+          item.routeColor && {
+        backgroundColor: "#" + item.routeColor,
+          },
+        ]}
+      >
+        
+        <Text
+          style={[
+        styles.kod,
+        item.routeColor && {
+          color: "#" + item.routeTextColor || '#FFFFFF',
+        },
+          ]}
+        >
+          {item.displayRouteCode}
+        </Text>
+      </View>
       <Text style={styles.isim}>{item.name}</Text>
     </View>
   </TouchableOpacity>
