@@ -6,9 +6,14 @@ import {
   StyleSheet, 
   FlatList, 
   ScrollView,
-  SafeAreaView // Daha güvenli bir alan için
+  SafeAreaView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // Görsel zenginlik katmak için ikonları import ediyoruz
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons'; 
 
@@ -24,26 +29,88 @@ const themeColors = {
   error: '#D32F2F',
 };
 
+interface FavoriteStop {
+  id: string;
+  name: string;
+  busStopName: string;
+  busStopCode: string;
+}
+
 export default function DurakDetayScreen() {
   const { stopId } = useLocalSearchParams();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [favoriteName, setFavoriteName] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Favori durumunu kontrol eden fonksiyon
+  const checkFavoriteStatus = async () => {
+    try {
+      const existingFavorites = await AsyncStorage.getItem('favoriteStops');
+      const favorites: FavoriteStop[] = existingFavorites ? JSON.parse(existingFavorites) : [];
+      const isCurrentlyFavorite = favorites.some(fav => fav.id === stopId);
+      setIsFavorite(isCurrentlyFavorite);
+    } catch (e) {
+      console.error('Favori durumu kontrol edilirken hata oluştu', e);
+    }
+  };
+
+  // Favori durakları kaldırma fonksiyonu
+  const removeFavoriteStop = async () => {
+    Alert.alert(
+      'Favoriyi Kaldır',
+      'Bu durağı favorilerinden kaldırmak istediğine emin misin?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Kaldır',
+          onPress: async () => {
+            try {
+              const existingFavorites = await AsyncStorage.getItem('favoriteStops');
+              let favorites: FavoriteStop[] = existingFavorites ? JSON.parse(existingFavorites) : [];
+              favorites = favorites.filter(fav => fav.id !== stopId);
+              await AsyncStorage.setItem('favoriteStops', JSON.stringify(favorites));
+              setIsFavorite(false);
+              alert('Favori durak kaldırıldı!');
+            } catch (e) {
+              console.error('Favori durak kaldırılırken hata oluştu', e);
+              alert('Kaldırma başarısız oldu.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   useLayoutEffect(() => {
-    if (data?.stopInfo?.busStopName) {
-      navigation.setOptions({ title: data.stopInfo.busStopName });
-    } else {
-      navigation.setOptions({ title: 'Durak Detayı' });
-    }
-  }, [data, navigation]);
+    navigation.setOptions({
+      title: data?.stopInfo?.busStopName || 'Durak Detayı',
+      headerRight: () => (
+        <TouchableOpacity 
+          onPress={() => {
+            if (isFavorite) {
+              removeFavoriteStop();
+            } else {
+              setModalVisible(true);
+            }
+          }}
+          style={{ marginRight: 15 }}
+        >
+          <FontAwesome name={isFavorite ? "star" : "star-o"} size={24} color="white" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [data, navigation, isFavorite]);
 
   useEffect(() => {
     if (!stopId) return;
     setLoading(true);
     setError(null);
-    // API isteği ve diğer mantıklar aynı kalıyor...
+    checkFavoriteStatus();
     fetch(
       `https://service.kentkart.com/rl1/web/nearest/bus?region=028&lang=tr&authType=4&accuracy=0&lat=0&lng=0&busStopId=${stopId}`,
       {
@@ -73,6 +140,42 @@ export default function DurakDetayScreen() {
         setLoading(false);
       });
   }, [stopId]);
+
+  const saveFavoriteStop = async () => {
+    if (!favoriteName.trim()) {
+      Alert.alert('Hata', 'Favori durak adı boş olamaz.');
+      return;
+    }
+
+    try {
+      const existingFavorites = await AsyncStorage.getItem('favoriteStops');
+      const favorites: FavoriteStop[] = existingFavorites ? JSON.parse(existingFavorites) : [];
+      
+      if (favorites.some(fav => fav.id === stopId)) {
+        Alert.alert('Hata', 'Bu durak zaten favorilerinizde kayıtlı.');
+        setModalVisible(false);
+        setFavoriteName('');
+        return;
+      }
+
+      const newFavorite = {
+        id: stopId as string,
+        name: favoriteName.trim(),
+        busStopName: data.stopInfo.busStopName,
+        busStopCode: data.stopInfo.busStopid,
+      };
+
+      favorites.push(newFavorite);
+      await AsyncStorage.setItem('favoriteStops', JSON.stringify(favorites));
+      setModalVisible(false);
+      setFavoriteName('');
+      setIsFavorite(true);
+      alert('Favori durak kaydedildi!');
+    } catch (e) {
+      console.error('Favori durak kaydedilirken hata oluştu', e);
+      alert('Kaydetme başarısız oldu.');
+    }
+  };
 
   if (loading) {
     return (
@@ -145,29 +248,31 @@ export default function DurakDetayScreen() {
   // Bilgi bulunamadığında gösterilecek component
   const renderEmptyState = (message: string) => (
       <View style={styles.emptyStateContainer}>
-        <MaterialCommunityIcons name="information-outline" size={24} color={themeColors.textSecondary} />
+        <MaterialCommunityIcons name="information-outline" size={32} color={themeColors.textSecondary} />
         <Text style={styles.emptyStateText}>{message}</Text>
       </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.fullContainer}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* Durak Başlığı ve ID'si */}
         <View style={styles.header}>
-          <Text style={styles.title}>{stopInfo.busStopName}</Text>
-          <Text style={styles.subtitle}>Durak No: {stopInfo.busStopid}</Text>
+          <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">{stopInfo.busStopName}</Text>
+          <View style={styles.stopCodeBadge}>
+            <Text style={styles.subtitle}>Durak No: {stopInfo.busStopid}</Text>
+          </View>
         </View>
 
         {/* Bölüm Başlıkları ve Listeler */}
-        <Text style={styles.sectionTitle}>Durağa Yaklaşan Otobüsler</Text>
+        <Text style={styles.sectionTitle}>Durağa Yaklaşan Araçlar</Text>
         <FlatList
           data={busList}
-          keyExtractor={(item, index) => `bus-${item.busId}-${index}`}
+          keyExtractor={(item) => `bus-${item.busId}-${item.plate}`}
           renderItem={renderBusItem}
-          ListEmptyComponent={() => renderEmptyState("Şu anda durağa yaklaşan otobüs bulunmuyor.")}
-          scrollEnabled={false} // ScrollView içinde olduğu için kendi scroll'unu kapattık
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />} // Kartlar arasına boşluk
+          ListEmptyComponent={() => renderEmptyState("Şu anda durağa yaklaşan araç bulunmuyor.")}
+          scrollEnabled={false}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         />
 
         <Text style={styles.sectionTitle}>Bu Duraktan Geçen Hatlar</Text>
@@ -179,162 +284,252 @@ export default function DurakDetayScreen() {
           scrollEnabled={false}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         />
+
+        {/* Favori Durak Ekle Modal'ı */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isModalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>Favori Durak Adı</Text>
+              <TextInput
+                style={styles.input}
+                onChangeText={setFavoriteName}
+                value={favoriteName}
+                placeholder="Örn: Evimin Önündeki Durak"
+                placeholderTextColor="#999"
+              />
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonClose]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.textStyle}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonSave]}
+                  onPress={saveFavoriteStop}
+                >
+                  <Text style={styles.textStyle}>Kaydet</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  fullContainer: {
     flex: 1,
     backgroundColor: themeColors.background,
   },
   container: {
-    padding: 16,
-    paddingBottom: 48,
+    padding: 20,
   },
   center: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: themeColors.background,
     padding: 20,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 10,
     fontSize: 16,
-    color: themeColors.primary,
-    fontWeight: '600',
+    color: themeColors.textSecondary,
   },
   errorText: {
+    marginTop: 15,
     fontSize: 18,
     color: themeColors.error,
-    fontWeight: 'bold',
     textAlign: 'center',
-    marginTop: 16,
+    fontWeight: '500',
   },
   header: {
-    marginBottom: 24,
-    alignItems: 'center',
+    marginBottom: 25,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: themeColors.textPrimary,
-    textAlign: 'center',
+    marginBottom: 8,
+  },
+  stopCodeBadge: {
+    backgroundColor: themeColors.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: 'flex-start', // Sadece kendi genişliği kadar yer kaplasın
   },
   subtitle: {
     fontSize: 16,
-    color: themeColors.textSecondary,
-    marginTop: 4,
+    color: '#333',
+    fontWeight: 'bold',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: themeColors.textPrimary,
-    marginBottom: 16,
-    marginTop: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: themeColors.primary,
-    paddingLeft: 8,
+    marginTop: 15,
+    marginBottom: 15,
   },
   card: {
     backgroundColor: themeColors.cardBackground,
     borderRadius: 12,
-    padding: 16,
+    padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 4,
   },
   cardIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: `${themeColors.primary}20`, // %20 opacity ile mavi
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    backgroundColor: `${themeColors.primary}20`, // %20 opacity
+    marginRight: 15,
   },
   cardContent: {
     flex: 1,
+    justifyContent: 'center',
   },
   cardTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 5,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: themeColors.textPrimary,
+    flex: 1, // Uzun metinlerin sığması için
   },
   routeBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
-    marginRight: 8,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   routeBadgeText: {
     fontWeight: 'bold',
     fontSize: 14,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: themeColors.textPrimary,
-    flex: 1, 
-  },
   plateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E2E8F0',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 6,
-    alignSelf: 'flex-start',
+    marginTop: 4,
   },
   plateText: {
-    color: themeColors.textPrimary,
-    fontWeight: 'bold',
-    marginLeft: 6,
+    color: themeColors.textSecondary,
+    fontWeight: '500',
     fontSize: 14,
+    marginLeft: 5,
   },
   cardRightContent: {
     alignItems: 'center',
-    marginLeft: 16,
+    justifyContent: 'center',
+    marginLeft: 10,
   },
   timeText: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     color: themeColors.primary,
   },
   timeLabel: {
     fontSize: 14,
     color: themeColors.textSecondary,
-    marginTop: -4,
   },
   cardRightContentMinimal: {
-    marginLeft: 16,
+    marginLeft: 10,
   },
   nextTripText: {
     fontSize: 13,
-    color: themeColors.secondary,
-    fontWeight: '600',
+    color: themeColors.textSecondary,
+    fontStyle: 'italic',
   },
   emptyStateContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
     backgroundColor: themeColors.cardBackground,
     borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: '#CBD5E0',
   },
   emptyStateText: {
-    marginTop: 8,
-    fontSize: 15,
+    fontSize: 16,
     color: themeColors.textSecondary,
     textAlign: 'center',
+    marginTop: 10,
+  },
+  // Modal Styles
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Arka planı karart
+  },
+  modalView: {
+    width: '85%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    marginBottom: 20,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: themeColors.textPrimary,
+  },
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f9f9f9',
+    paddingHorizontal: 15,
+    width: '100%',
+    borderRadius: 10,
+    fontSize: 16,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    width: '100%',
+    marginTop: 25,
+  },
+  button: {
+    borderRadius: 10,
+    padding: 12,
+    elevation: 2,
+    flex: 1,
+  },
+  buttonClose: {
+    backgroundColor: '#f1f1f1',
+    marginRight: 10,
+  },
+  buttonSave: {
+    backgroundColor: themeColors.primary,
+  },
+  textStyle: {
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 16,
   },
 });

@@ -9,7 +9,7 @@
 
 ## Önemli Bilgilendirme
 
-Eğer uygulama üzerinden giriş yapamıyorsanız, bunun sebebi KentKart sistemine yeni eklenen SMS kodu doğrulama sistemidir. Bu uygulamayı kullanabilmek için öncelikle hesabınıza **resmi KentKart mobil uygulamasından giriş yapmanız** gerekmektedir. Resmi uygulamadan başarılı bir şekilde giriş yaptıktan sonra, bu uygulamayı kullanmaya devam edebilirsiniz.
+Eğer uygulama üzerinden giriş yapamıyorsanız, bunun sebebi Gaziantep Kart sistemine yeni eklenen SMS kodu doğrulama sistemidir. Bu uygulamayı kullanabilmek için öncelikle hesabınıza **resmi Gaziantep Kart mobil uygulamasından giriş yapmanız** gerekmektedir. Resmi uygulamadan başarılı bir şekilde giriş yaptıktan sonra, bu uygulamayı kullanmaya devam edebilirsiniz.
 
 Bu proje, Gaziantep Kart sistemini kullanarak bakiye sorgulama, son kullanımları görüntüleme, bakiye bazlı kalan kullanım hesaplama ve duyuruları görüntüleme gibi özellikler sunan bir React Native Expo uygulamasıdır.
 
@@ -31,6 +31,9 @@ Uygulamanın en son versiyonunu indirmek için [buraya](https://github.com/swemp
 
 ## Özellikler
 
+- [x] Favori durak ekleme
+- [x] Otobüs ve tramvay rotalarını haritada görme
+- [x] Durak bilgilerini, araçların ne zaman geleceğini görme
 - [x] Bakiye sorgulama
 - [x] Bekleyen dolumları görme
 - [x] Tarifeler listesi
@@ -75,6 +78,7 @@ Uygulamanın en son versiyonunu indirmek için [buraya](https://github.com/swemp
 - [x] Giriş sistemi ekleme
 - [x] Kart kaydetme
 - [x] Kullanıcı dostu arayüz ve tasarım iyileştirmeleri
+- [x] Favori durak ekleme
 
 ## Lisans
 

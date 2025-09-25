@@ -36,6 +36,21 @@ export default function HatlarScreen() {
             </View>
             <Ionicons name="chevron-forward" size={24} color="#555" />
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.card, { marginTop: 20 }]} 
+            activeOpacity={0.8} 
+            onPress={() => router.push('/durak/favori-duraklar')}
+          >
+            <View style={styles.cardIconContainer}>
+              <Ionicons name="star" size={28} color="#FFFFFF" />
+            </View>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.cardTitle}>Favori Duraklarım</Text>
+              <Text style={styles.cardDescription}>Kaydettiğin durakları hızlıca gör</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#555" />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </ImageBackground>
