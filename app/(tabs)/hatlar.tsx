@@ -13,7 +13,7 @@ export default function HatlarScreen() {
     <ImageBackground source={backgroundImage} style={styles.container}>
       {/* Arka plan resminin üzerine gelen durum çubuğu metinlerini beyaz yapar */}
       <StatusBar barStyle="light-content" />
-      
+
       {/* SafeAreaView, içeriğin telefon çentikleri altına girmesini engeller */}
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
@@ -22,9 +22,9 @@ export default function HatlarScreen() {
         </View>
 
         <View style={styles.content}>
-          <TouchableOpacity 
-            style={styles.card} 
-            activeOpacity={0.8} 
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.8}
             onPress={() => router.push('/hatlar/ara')}
           >
             <View style={styles.cardIconContainer}>
@@ -37,9 +37,9 @@ export default function HatlarScreen() {
             <Ionicons name="chevron-forward" size={24} color="#555" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.card, { marginTop: 20 }]} 
-            activeOpacity={0.8} 
+          <TouchableOpacity
+            style={[styles.card, { marginTop: 20 }]}
+            activeOpacity={0.8}
             onPress={() => router.push('/durak/favori-duraklar')}
           >
             <View style={styles.cardIconContainer}>
@@ -48,6 +48,21 @@ export default function HatlarScreen() {
             <View style={styles.cardTextContainer}>
               <Text style={styles.cardTitle}>Favori Duraklarım</Text>
               <Text style={styles.cardDescription}>Kaydettiğin durakları hızlıca gör</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#555" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.card, { marginTop: 20 }]}
+            activeOpacity={0.8}
+            onPress={() => router.push('/durak/akilli-durak')}
+          >
+            <View style={styles.cardIconContainer}>
+              <Ionicons name="qr-code" size={28} color="#FFFFFF" />
+            </View>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.cardTitle}>Akıllı Durak</Text>
+              <Text style={styles.cardDescription}>Duraktaki QR kodunu okutarak gelen araçları gör</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#555" />
           </TouchableOpacity>
@@ -70,7 +85,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     // Arka plan resminin üzerine hafif bir karartma ekleyerek metin okunabilirliğini artırır
-    backgroundColor: 'rgba(0, 0, 0, 0.35)', 
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
   header: {
     paddingTop: 60,
@@ -105,7 +120,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', // İçerikleri yatayda hizalar
     alignItems: 'center',
     // "Buzlu Cam" (Frosted Glass) efekti
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', 
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 20,
     padding: 16,
     // Modern ve yumuşak bir gölge

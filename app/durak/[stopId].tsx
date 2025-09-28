@@ -90,18 +90,20 @@ export default function DurakDetayScreen() {
     navigation.setOptions({
       title: data?.stopInfo?.busStopName || 'Durak Detayı',
       headerRight: () => (
+      data?.stopInfo?.busStopName ? (
         <TouchableOpacity 
-          onPress={() => {
-            if (isFavorite) {
-              removeFavoriteStop();
-            } else {
-              setModalVisible(true);
-            }
-          }}
-          style={{ marginRight: 15 }}
+        onPress={() => {
+          if (isFavorite) {
+          removeFavoriteStop();
+          } else {
+          setModalVisible(true);
+          }
+        }}
+        style={{ marginRight: 15 }}
         >
-          <FontAwesome name={isFavorite ? "star" : "star-o"} size={24} color="white" />
+        <FontAwesome name={isFavorite ? "star" : "star-o"} size={24} color="white" />
         </TouchableOpacity>
+      ) : null
       ),
     });
   }, [data, navigation, isFavorite]);
@@ -186,7 +188,7 @@ export default function DurakDetayScreen() {
     );
   }
 
-  if (error || !data) {
+  if (error || !data || data.stopInfo.busStopName == "") {
     return (
       <View style={styles.center}>
         <MaterialCommunityIcons name="bus-stop-uncovered" size={64} color={themeColors.error} />

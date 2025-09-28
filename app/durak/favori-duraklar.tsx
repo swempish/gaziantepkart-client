@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Önceki sayfayla tutarlılık için ikon setlerini ekliyoruz
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface FavoriteStop {
