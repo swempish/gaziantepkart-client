@@ -11,6 +11,7 @@ import {
   TextInput,
   Modal,
   Alert,
+  Animated, // Animasyon için ekledik
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -45,6 +46,56 @@ export default function DurakDetayScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [favoriteName, setFavoriteName] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const pulseAnimation = new Animated.Value(1); // Animasyon için state
+
+  // Veri çekme mantığını ayrı bir fonksiyona taşıyalım
+  const fetchData = (isInitialLoad = false) => {
+    if (isInitialLoad) {
+      setLoading(true);
+      setError(null);
+    }
+    
+    if (!stopId) return;
+
+    fetch(
+      `https://service.kentkart.com/rl1/web/nearest/bus?region=028&lang=tr&authType=4&accuracy=0&lat=0&lng=0&busStopId=${stopId}`,
+      {
+        credentials: 'omit',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
+          Accept: 'application/json, text/plain, */*',
+          'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
+          'Content-Type': 'application/json',
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'cross-site',
+          Priority: 'u=0',
+        },
+        referrer: 'https://online.gaziantepkart.com.tr/',
+        method: 'GET',
+        mode: 'cors',
+      }
+    )
+      .then((res) => res.json())
+      .then((json) => {
+        setData(json);
+        // Animasyonu tetikle
+        pulseAnimation.setValue(0.8);
+        Animated.spring(pulseAnimation, {
+          toValue: 1,
+          friction: 3,
+          useNativeDriver: true,
+        }).start();
+      })
+      .catch(() => {
+        setError('Veri alınamadı.');
+      })
+      .finally(() => {
+        if (isInitialLoad) {
+          setLoading(false);
+        }
+      });
+  };
 
   // Favori durumunu kontrol eden fonksiyon
   const checkFavoriteStatus = async () => {
@@ -109,38 +160,14 @@ export default function DurakDetayScreen() {
   }, [data, navigation, isFavorite]);
 
   useEffect(() => {
-    if (!stopId) return;
-    setLoading(true);
-    setError(null);
     checkFavoriteStatus();
-    fetch(
-      `https://service.kentkart.com/rl1/web/nearest/bus?region=028&lang=tr&authType=4&accuracy=0&lat=0&lng=0&busStopId=${stopId}`,
-      {
-        credentials: 'omit',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
-          Accept: 'application/json, text/plain, */*',
-          'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
-          'Content-Type': 'application/json',
-          'Sec-Fetch-Dest': 'empty',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'cross-site',
-          Priority: 'u=0',
-        },
-        referrer: 'https://online.gaziantepkart.com.tr/',
-        method: 'GET',
-        mode: 'cors',
-      }
-    )
-      .then((res) => res.json())
-      .then((json) => {
-        setData(json);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Veri alınamadı.');
-        setLoading(false);
-      });
+    fetchData(true); // İlk yükleme
+
+    const interval = setInterval(() => {
+      fetchData(false); // Periyodik güncelleme
+    }, 5000); // 5 saniyede bir
+
+    return () => clearInterval(interval); // Component unmount olduğunda interval'i temizle
   }, [stopId]);
 
   const saveFavoriteStop = async () => {
@@ -202,22 +229,22 @@ export default function DurakDetayScreen() {
   // Yaklaşan otobüsler için render item fonksiyonu
   const renderBusItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
-      <View style={styles.cardIconContainer}>
-        <FontAwesome name="bus" size={24} color={themeColors.primary} />
-      </View>
+      <View style={[styles.routeColorStrip, { backgroundColor: item.routeColor ? `#${item.routeColor}` : themeColors.primary }]} />
       <View style={styles.cardContent}>
-        <View style={styles.cardTitleContainer}>
-          <View style={[styles.routeBadge, { backgroundColor: item.routeColor ? `#${item.routeColor}` : themeColors.primary }]}>
-            <Text style={[styles.routeBadgeText, { color: item.routeTextColor ? `#${item.routeTextColor}` : '#FFFFFF' }]}>{item.displayRouteCode}</Text>
+        <View>
+          <View style={styles.cardTitleContainer}>
+            <View style={styles.routeCodeBadge}>
+              <Text style={styles.routeCodeBadgeText}>{item.displayRouteCode}</Text>
+            </View>
+            <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.headSign}</Text>
           </View>
-          <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.headSign}</Text>
-          {item.disabledPerson === '1' && (
-            <FontAwesome name="wheelchair" size={18} color={themeColors.textPrimary} style={{ marginLeft: 8 }} />
-          )}
-        </View>
-        <View style={styles.plateContainer}>
-          <MaterialCommunityIcons name="card-account-details-outline" size={16} color={themeColors.textSecondary} />
-          <Text style={styles.plateText}>{item.plate}</Text>
+          <View style={styles.cardDetails}>
+            <MaterialCommunityIcons name="card-account-details-outline" size={16} color={themeColors.textSecondary} />
+            <Text style={styles.plateText}>{item.plate}</Text>
+            {item.disabledPerson === '1' && (
+              <FontAwesome name="wheelchair" size={16} color={themeColors.textPrimary} style={{ marginLeft: 12 }} />
+            )}
+          </View>
         </View>
       </View>
       <View style={styles.cardRightContent}>
@@ -230,18 +257,14 @@ export default function DurakDetayScreen() {
   // Durağa uğrayan hatlar için render item fonksiyonu
   const renderRouteItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
-       <View style={[styles.cardIconContainer, { backgroundColor: `${themeColors.secondary}20` }]}>
-        <MaterialCommunityIcons name="routes" size={24} color={themeColors.secondary} />
-      </View>
+      <View style={[styles.routeColorStrip, { backgroundColor: item.routeColor ? `#${item.routeColor}` : themeColors.secondary }]} />
       <View style={styles.cardContent}>
         <View style={styles.cardTitleContainer}>
-            <View style={[styles.routeBadge, { backgroundColor: item.routeColor ? `#${item.routeColor}` : themeColors.secondary }]}>
-                <Text style={[styles.routeBadgeText, { color: item.routeTextColor ? `#${item.routeTextColor}` : '#FFFFFF' }]}>{item.displayRouteCode}</Text>
-            </View>
-            <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.headSign}</Text>
+          <View style={styles.routeCodeBadge}>
+            <Text style={styles.routeCodeBadgeText}>{item.displayRouteCode}</Text>
+          </View>
+          <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.headSign}</Text>
         </View>
-      </View>
-      <View style={styles.cardRightContentMinimal}>
         <Text style={styles.nextTripText}>Sonraki Varış: {item.nextTripArrivalTime || '-'}</Text>
       </View>
     </View>
@@ -267,8 +290,15 @@ export default function DurakDetayScreen() {
         </View>
 
         {/* Bölüm Başlıkları ve Listeler */}
-        <Text style={styles.sectionTitle}>Durağa Yaklaşan Araçlar</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Durağa Yaklaşan Araçlar</Text>
+          <View style={styles.liveIndicatorContainer}>
+            <Animated.View style={[styles.liveDot, { transform: [{ scale: pulseAnimation }] }]} />
+            <Text style={styles.liveText}>CANLI</Text>
+          </View>
+        </View>
         <FlatList
+          style={{marginBottom: 20}}
           data={busList}
           keyExtractor={(item) => `bus-${item.busId}-${item.plate}`}
           renderItem={renderBusItem}
@@ -374,65 +404,87 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: 'bold',
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 15,
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: themeColors.textPrimary,
-    marginTop: 15,
-    marginBottom: 15,
+  },
+  liveIndicatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9', // Açık yeşil arka plan
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: themeColors.secondary, // Yeşil nokta
+    marginRight: 6,
+  },
+  liveText: {
+    fontSize: 14,
+    color: themeColors.secondary,
+    fontWeight: 'bold',
   },
   card: {
     backgroundColor: themeColors.cardBackground,
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 8,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch', // İçeriklerin yüksekliğini eşitle
+    overflow: 'hidden', // Renk şeridinin köşelerini yuvarlatmak için
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  cardIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: `${themeColors.primary}20`, // %20 opacity
-    marginRight: 15,
+  routeColorStrip: {
+    width: 8,
   },
   cardContent: {
     flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    justifyContent: 'space-between',
   },
   cardTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 8,
+  },
+  routeCodeBadge: {
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 8,
+  },
+  routeCodeBadgeText: {
+    color: themeColors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   cardTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: themeColors.textPrimary,
     flex: 1, // Uzun metinlerin sığması için
   },
-  routeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  routeBadgeText: {
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  plateContainer: {
+  cardDetails: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
   plateText: {
     color: themeColors.textSecondary,
@@ -441,24 +493,26 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   cardRightContent: {
+    width: 70,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 10,
+    backgroundColor: '#F7FAFC',
+    paddingHorizontal: 10,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E2E8F0',
   },
   timeText: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: themeColors.primary,
   },
   timeLabel: {
     fontSize: 14,
     color: themeColors.textSecondary,
-  },
-  cardRightContentMinimal: {
-    marginLeft: 10,
+    marginTop: -2,
   },
   nextTripText: {
-    fontSize: 13,
+    fontSize: 14,
     color: themeColors.textSecondary,
     fontStyle: 'italic',
   },
