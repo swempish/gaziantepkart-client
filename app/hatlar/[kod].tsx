@@ -52,10 +52,12 @@ export default function HatDetayScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStops, setFilteredStops] = useState<Stop[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const liveBusListRef = useRef<Bus[]>([]);
   const [selectedBusCoord, setSelectedBusCoord] = useState<{lat: number, lng: number} | null>(null);
   const webViewRef = useRef<any>(null);
   const router = useRouter();
   const [direction, setDirection] = useState(1);
+  const [liveStatus, setLiveStatus] = useState('live');
 
   const toggleDirection = () => {
     setDirection(prevDirection => (prevDirection === 1 ? 0 : 1));
@@ -86,25 +88,29 @@ export default function HatDetayScreen() {
     if (!webViewRef.current || !data?.pathList?.[0]) return;
 
     const fetchBusLocations = async () => {
+      setLiveStatus('updating');
       try {
         const res = await fetch(
           `https://service.kentkart.com/rl1/web/pathInfo?region=028&lang=tr&authType=4&direction=${direction}&displayRouteCode=${encodeURIComponent(String(kod))}&resultType=111111`,
         );
-        if (!res.ok) return;
+        if (!res.ok) return; // Hata durumunda kırmızı kalır
         const json = await res.json();
         if (json?.pathList?.[0]?.busList) {
+          liveBusListRef.current = json.pathList[0].busList;
           webViewRef.current.postMessage(JSON.stringify({
             type: 'updateBuses',
             buses: json.pathList[0].busList
           }));
         }
+        setLiveStatus('live'); // Başarılı olunca yeşile döner
       } catch (e) {
         console.error('Error fetching bus locations:', e);
+        // Hata durumunda kırmızı kalır
       }
     };
 
-    // Her 6 saniyede bir güncelle
-    intervalRef.current = setInterval(fetchBusLocations, 6000);
+    // Her 3 saniyede bir güncelle
+    intervalRef.current = setInterval(fetchBusLocations, 3000);
 
     return () => {
       if (intervalRef.current) {
@@ -151,6 +157,9 @@ export default function HatDetayScreen() {
   useEffect(() => {
     if (data?.pathList?.[0]?.busStopList) {
       setFilteredStops(data.pathList[0].busStopList);
+    }
+    if (data?.pathList?.[0]?.busList) {
+      liveBusListRef.current = data.pathList[0].busList;
     }
   }, [data]);
 
@@ -220,10 +229,14 @@ export default function HatDetayScreen() {
   ];
 
   // Haritada göster fonksiyonu
-  const handleShowOnMap = (bus: Bus) => {
+  const handleShowOnMap = (busId: string) => {
+    const bus = liveBusListRef.current.find(b => b.busId === busId);
+    if (!bus) return;
+
     const lat = parseFloat(bus.lat);
     const lng = parseFloat(bus.lng);
     setSelectedBusCoord({ lat, lng });
+    
     if (webViewRef.current) {
       webViewRef.current.postMessage(JSON.stringify({ type: 'zoomToBus', lat, lng }));
     }
@@ -304,6 +317,10 @@ export default function HatDetayScreen() {
             scrollEnabled={false}
             onMessage={handleWebViewMessage}
           />
+          <View style={styles.liveBadge}>
+            <View style={[styles.liveCircle, { backgroundColor: liveStatus === 'live' ? themeColors.secondary : themeColors.error }]} />
+            <Text style={styles.liveText}>Canlı</Text>
+          </View>
         </View>
 
         {/* Araçlar */}
@@ -356,7 +373,7 @@ export default function HatDetayScreen() {
   );
 }
 
-const BusCard = memo(({ bus, onShowOnMap }: { bus: Bus, onShowOnMap: (bus: Bus) => void }) => (
+const BusCard = memo(({ bus, onShowOnMap }: { bus: Bus, onShowOnMap: (busId: string) => void }) => (
   <View style={styles.busCard}>
     <View style={styles.busCardRow}>
       <View style={styles.busIconBox}>
@@ -389,7 +406,7 @@ const BusCard = memo(({ bus, onShowOnMap }: { bus: Bus, onShowOnMap: (bus: Bus) 
         </View>
       )}
     </View>
-    <TouchableOpacity style={styles.showOnMapBtn} onPress={() => onShowOnMap(bus)}>
+    <TouchableOpacity style={styles.showOnMapBtn} onPress={() => onShowOnMap(bus.busId)}>
         <Ionicons name="location-sharp" size={18} color={themeColors.primary} />
         <Text style={styles.showOnMapText}>Haritada Göster</Text>
     </TouchableOpacity>
@@ -592,6 +609,30 @@ const styles = StyleSheet.create({
     color: themeColors.primary,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  liveBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(45, 55, 72, 0.85)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    zIndex: 10,
+    elevation: 5,
+  },
+  liveCircle: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    marginRight: 7,
+  },
+  liveText: {
+    color: themeColors.white,
+    fontWeight: '600',
+    fontSize: 13,
   },
   stopId: {
     fontSize: 13,
