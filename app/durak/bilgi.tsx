@@ -122,6 +122,7 @@ const BilgiScreen = () => {
     const [aracVerisi, setAracVerisi] = React.useState<AracVerisi | null>(aracVerisiCache);
     const [loading, setLoading] = React.useState(!aracVerisiCache);
     const [error, setError] = React.useState<string | null>(null);
+    const [expandedId, setExpandedId] = useState<number | null>(null); // Genişletilmiş kartın ID'sini takip etmek için eklendi
 
     React.useEffect(() => {
         const veriCek = async () => {
@@ -146,27 +147,42 @@ const BilgiScreen = () => {
 
         return (
             <View style={styles.listContainer}>
-                {Object.entries(aracVerisi).map(([kod, arac]) => (
-                    <View key={kod} style={styles.card}>
-                        <Image source={{ uri: arac.görselLinkleri[0] }} style={styles.cardImage} />
-                        <View style={styles.cardContent}>
-                            <Text style={styles.cardTitle}>{arac.ad}</Text>
-                            <Text style={styles.cardDescription}>{arac.açıklama}</Text>
+                {Object.entries(aracVerisi).map(([kod, arac], index) => {
+                    const isExpanded = index === expandedId;
+                    const aciklamaKisa = arac.açıklama.length > 100 ? `${arac.açıklama.substring(0, 100)}...` : arac.açıklama;
+
+                    return (
+                        <View key={kod} style={styles.card}>
+                            <Image source={{ uri: arac.görselLinkleri[0] }} style={styles.cardImage} />
+                            <View style={styles.cardContent}>
+                                <Text style={styles.cardTitle}>{arac.ad}</Text>
+                                <Text style={styles.cardDescription}>{isExpanded ? arac.açıklama : aciklamaKisa}</Text>
+                            </View>
+                            {isExpanded && (
+                                <>
+                                    <View style={styles.divider} />
+                                    <View style={styles.cardContent}>
+                                        <Text style={styles.teknikBilgiTitle}>Teknik Özellikler</Text>
+                                        {Object.entries(arac.teknikBilgi).map(([key, value]) => (
+                                            <InfoRow
+                                                key={key}
+                                                label={formatKey(key)}
+                                                value={value}
+                                                icon={getIconForKey(key)}
+                                            />
+                                        ))}
+                                    </View>
+                                </>
+                            )}
+                            <View style={styles.cardActions}>
+                                <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : index)} style={styles.expandButton}>
+                                    <Text style={styles.expandButtonText}>{isExpanded ? 'Daha Az' : 'Daha Fazla'}</Text>
+                                    <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={COLORS.card} style={styles.expandButtonIcon} />
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        <View style={styles.divider} />
-                        <View style={styles.cardContent}>
-                            <Text style={styles.teknikBilgiTitle}>Teknik Özellikler</Text>
-                            {Object.entries(arac.teknikBilgi).map(([key, value]) => (
-                                <InfoRow
-                                    key={key}
-                                    label={formatKey(key)}
-                                    value={value}
-                                    icon={getIconForKey(key)}
-                                />
-                            ))}
-                        </View>
-                    </View>
-                ))}
+                    );
+                })}
             </View>
         );
     };
@@ -298,7 +314,6 @@ const styles = StyleSheet.create({
         color: COLORS.textPrimary,
         marginBottom: 16,
     },
-    
     infoRowContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -351,6 +366,35 @@ const styles = StyleSheet.create({
     },
     dangerPillText: {
         color: COLORS.danger,
+    },
+    cardActions: {
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.divider,
+        alignItems: 'center',
+    },
+    expandButton: {
+        backgroundColor: COLORS.primary,
+        borderRadius: 25,
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 8,
+    },
+    expandButtonText: {
+        color: COLORS.card,
+        fontWeight: '700',
+        fontSize: 16,
+        marginRight: 8,
+    },
+    expandButtonIcon: {
+        marginLeft: 5,
     },
 });
 
