@@ -66,6 +66,21 @@ export default function HatlarScreen() {
             </View>
             <Ionicons name="chevron-forward" size={24} color="#555" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.card, { marginTop: 20 }]}
+            activeOpacity={0.8}
+            onPress={() => router.push('/durak/bilgi')}
+          >
+            <View style={styles.cardIconContainer}>
+              <Ionicons name="information-circle" size={28} color="#FFFFFF" />
+            </View>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.cardTitle}>Genel Bilgi Merkezi</Text>
+              <Text style={styles.cardDescription}>Ulaşımla ilgili çeşitli bilgilere buradan ulaşabilirsiniz</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#555" />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </ImageBackground>
