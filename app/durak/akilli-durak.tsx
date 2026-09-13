@@ -120,7 +120,13 @@ const QRCodeScannerUI = () => {
     <View style={styles.scannerContainer}>
       <CameraView
         onBarcodeScanned={handleBarCodeScanned}
-        style={StyleSheet.absoluteFillObject}
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+        }}
         enableTorch={torchOn ? true : false}
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],
@@ -226,7 +232,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     backgroundColor: 'transparent',
     flex: 1,
   },

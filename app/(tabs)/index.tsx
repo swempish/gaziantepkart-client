@@ -1333,7 +1333,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   kartGuncelleOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.25)',
     alignItems: 'center',
     justifyContent: 'center',

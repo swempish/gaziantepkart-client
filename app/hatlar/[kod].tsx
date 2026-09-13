@@ -51,7 +51,7 @@ export default function HatDetayScreen() {
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStops, setFilteredStops] = useState<Stop[]>([]);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveBusListRef = useRef<Bus[]>([]);
   const [selectedBusCoord, setSelectedBusCoord] = useState<{lat: number, lng: number} | null>(null);
   const webViewRef = useRef<any>(null);
@@ -279,7 +279,7 @@ export default function HatDetayScreen() {
 
   return (
     <>
-      <StatusBar backgroundColor={themeColors.primary} style="light" />
+      <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.container} scrollEnabled={scrollEnabled}>
         <View style={styles.headerContainer}>
           <View style={[styles.routeBadge, { backgroundColor: path.routeColor ? `#${path.routeColor}` : themeColors.primary }]}>

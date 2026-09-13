@@ -82,7 +82,7 @@ const formatValue = (value: any) => {
 
 
 // Teknik bilgi satırlarını oluşturacak olan bileşen
-const InfoRow = ({ label, value, icon }: { label: string, value: any, icon: JSX.Element }) => {
+const InfoRow = ({ label, value, icon }: { label: string, value: any, icon: React.JSX.Element }) => {
     // Boolean (true/false) değerleri için özel gösterim
     if (typeof value === 'boolean') {
         const isAvailable = value;

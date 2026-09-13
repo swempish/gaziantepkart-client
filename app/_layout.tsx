@@ -1,6 +1,5 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
-import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
@@ -27,8 +26,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <TabBarVisibilityProvider>
-        <StatusBar backgroundColor="#1976D2" style="light" />
-        <ThemeProvider value={DarkTheme}>
+        <StatusBar style="light" />
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -37,7 +35,6 @@ export default function RootLayout() {
             <Stack.Screen name="durak" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
-        </ThemeProvider> 
       </TabBarVisibilityProvider>
     </GestureHandlerRootView>
   );
