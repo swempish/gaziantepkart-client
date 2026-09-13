@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView, 
   StatusBar, 
   FlatList, 
   TouchableOpacity, 

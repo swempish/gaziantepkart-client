@@ -33,7 +33,6 @@ export default function RootLayout() {
             <Stack.Screen name="info" options={{ headerShown: false }} />
             <Stack.Screen name="hatlar" options={{ headerShown: false }} />
             <Stack.Screen name="durak" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
           </Stack>
       </TabBarVisibilityProvider>
     </GestureHandlerRootView>

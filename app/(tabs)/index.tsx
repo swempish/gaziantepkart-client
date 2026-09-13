@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTabBarVisibility } from '../../utils/TabBarVisibilityContext';
+import { fetchUcretTarifesi, Tarifeler } from '../../utils/tarifeler';
 import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Linking, Alert, Animated, Easing, TextInput, Button } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaskedTextInput } from "react-native-mask-text";
@@ -112,7 +113,7 @@ export default function HomeScreen() {
   const [enYeniVersiyon, setEnYeniVersiyon] = useState<string | null>(null);
 
   // Tarifeler
-  const [tarifeler, setTarifeler] = useState({ ogrenci: 0, tam: 0 });
+  const [tarifeler, setTarifeler] = useState<Tarifeler>({ ogrenci: 0, tam: 0 });
   const [tarifeLoading, setTarifeLoading] = useState(true);
 
   // Hata
@@ -217,23 +218,30 @@ export default function HomeScreen() {
     fetchDuyurular();
   }, []);
 
-  // Tarifeleri çek
+  // Tarifeleri çek (önbellek + ağ, utils/tarifeler.ts içinde yönetilir)
   useEffect(() => {
+    let iptalEdildi = false;
+
     async function fetchTarifeler() {
-      setTarifeLoading(true);
       try {
-        const resp = await fetch("https://acikveriapi.gaziantep.bel.tr/api/Ulasim/UcretTarifesi");
-        const data = await resp.json();
-        const sehirIci = data.data.find((item: any) => item.type === "Belediye (Şehir İçi)");
-        if (sehirIci) {
-          setTarifeler({ ogrenci: sehirIci.student || 0, tam: sehirIci.full || 0 });
+        const sonuc = await fetchUcretTarifesi();
+        if (iptalEdildi) return;
+        if (sonuc) {
+          setTarifeler(sonuc);
         }
-      } catch (e) {
-        setTarifeler({ ogrenci: 0, tam: 0 });
+        // sonuc null ise (ağ hatası + önbellek yok) mevcut {0, 0} varsayılanı kalır
+      } catch {
+        // fetchUcretTarifesi hata fırlatmamalı, ama garanti olsun diye sessiz geç
+      } finally {
+        if (!iptalEdildi) setTarifeLoading(false);
       }
-      setTarifeLoading(false);
     }
+
     fetchTarifeler();
+
+    return () => {
+      iptalEdildi = true;
+    };
   }, []);
 
   // Uygulama açılışında kayıtlı kartları yükle
@@ -491,8 +499,11 @@ export default function HomeScreen() {
 
         {/* Yeni sürüm uyarısı */}
         {enYeniVersiyon && (() => {
+          function verToInt(version:String) {
+            return parseInt(version.replaceAll("v", "").replaceAll(".", "").trim());
+          }
           const mevcutVersiyon = require('../../package.json').version;
-          if (mevcutVersiyon !== enYeniVersiyon) {
+          if (verToInt(mevcutVersiyon) < verToInt(enYeniVersiyon)) {
             return (
               <View
                 style={{
