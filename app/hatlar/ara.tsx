@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { fetchWithTimeout } from '../../utils/kentkartApi';
 
 // Türkçe karakterleri normalize eden fonksiyon
 function normalize(str: string) {
@@ -43,8 +44,10 @@ export default function HatlarAra() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch(
-      'https://service.kentkart.com/rl1/web/nearest/find?region=028&authType=4&version=Web_2.0.7(27)_1.0_FIREFOX_kentkart.web.gaziantepkart&lang=tr&keyword='
+    fetchWithTimeout(
+      'https://service.kentkart.com/rl1/web/nearest/find?region=028&authType=4&version=Web_2.0.7(27)_1.0_FIREFOX_kentkart.web.gaziantepkart&lang=tr&keyword=',
+      {},
+      15000
     )
       .then((res) => res.json())
       .then((data) => {

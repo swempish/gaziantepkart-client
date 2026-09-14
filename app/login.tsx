@@ -3,6 +3,7 @@ import { Image, StyleSheet, View, Text, TextInput, ActivityIndicator, Pressable,
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
+import { fetchWithTimeout } from '../utils/kentkartApi';
 
 // Renk paleti ve stil sabitleri (index.tsx ile uyumlu)
 const COLORS = {
@@ -25,6 +26,7 @@ export default function Login() {
     const [numaraFocus, setNumaraFocus] = useState(false);
     const [şifreFocus, setŞifreFocus] = useState(false);
     const [timeoutPanel, setTimeoutPanel] = useState(false);
+    const [hata, setHata] = useState<string | null>(null);
     const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     async function girişYap() {
@@ -36,85 +38,94 @@ export default function Login() {
             setTimeoutPanel(true);
         }, 20000);
 
-        let url = "https://auth.kentkart.com/rl1/oauth/authorize";
-        let params = {
-            region: "028",
-            authType: "4",
-            version: "Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart",
-            lang: "tr"
-        };
-        let urlWithParams = new URL(url);
-        for (const [key, value] of Object.entries(params)) {
-            urlWithParams.searchParams.append(key, value);
-        }
-        let requestHeaders = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
-            "Content-Type": "application/json",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-site",
-            "Priority": "u=0"
-        };
-        let requestBody = {
-            "clientId": "rH7S2",
-            "loginType": "phone",
-            "responseType": "code",
-            "countryCode": "tr",
-            "phoneNumber": String(numaraInput),
-            "pin": String(şifreInput)
-        };
-
-        let response = await fetch(urlWithParams, {
-            method: "POST",
-            mode: "cors",
-            headers: requestHeaders,
-            body: JSON.stringify(requestBody)
-        });
-
-        let keyOluşturucuData = await response.json();
-        
-        if (keyOluşturucuData["code"] == "411") {
-            alert(keyOluşturucuData["message"]);
-            setProcessing(false);
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            return;
-        }
-
-        let apiKeyOluşturucuKod = keyOluşturucuData["code"];
-
-        let apiOluşturucuResponse = await fetch("https://auth.kentkart.com/rl1/oauth/token?region=028&authType=4&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr", {
-            "credentials": "omit",
-            "headers": {
+        try {
+            let url = "https://auth.kentkart.com/rl1/oauth/authorize";
+            let params = {
+                region: "028",
+                authType: "4",
+                version: "Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart",
+                lang: "tr"
+            };
+            let urlWithParams = new URL(url);
+            for (const [key, value] of Object.entries(params)) {
+                urlWithParams.searchParams.append(key, value);
+            }
+            let requestHeaders = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0",
                 "Accept": "application/json, text/plain, */*",
                 "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
                 "Content-Type": "application/json",
                 "Sec-Fetch-Dest": "empty",
                 "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-site"
-            },
-            "referrer": "https://m.kentkart.com/",
-            "body": "{\"clientId\":\"rH7S2\",\"clientSecret\":\"Om121T12fSv1j66kp9Un5vE9IMkJ3639\",\"redirectUri\":\"m.kentkart.com\",\"code\":\"" + apiKeyOluşturucuKod + "\",\"grantType\":\"authorizationCode\"}",
-            "method": "POST",
-            "mode": "cors"
-        });
+                "Sec-Fetch-Site": "same-site",
+                "Priority": "u=0"
+            };
+            let requestBody = {
+                "clientId": "rH7S2",
+                "loginType": "phone",
+                "responseType": "code",
+                "countryCode": "tr",
+                "phoneNumber": String(numaraInput),
+                "pin": String(şifreInput)
+            };
 
-        let apiKeyData = await apiOluşturucuResponse.json();
-        
-        if(apiKeyData["result"]["code"] == 0) {
-            // Giriş yapıldı
-            await AsyncStorage.setItem('apiKey', apiKeyData["accessToken"]);
-            await AsyncStorage.setItem('refreshToken', apiKeyData["refreshToken"]);
-            await AsyncStorage.setItem('kartlarım', JSON.stringify([]));
-            router.replace("/");
+            let response = await fetchWithTimeout(urlWithParams, {
+                method: "POST",
+                mode: "cors",
+                headers: requestHeaders,
+                body: JSON.stringify(requestBody)
+            }, 20000);
+
+            let keyOluşturucuData = await response.json();
+
+            if (keyOluşturucuData["code"] == "411") {
+                setHata(keyOluşturucuData["message"]);
+                setProcessing(false);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                return;
+            }
+
+            let apiKeyOluşturucuKod = keyOluşturucuData["code"];
+
+            let apiOluşturucuResponse = await fetchWithTimeout("https://auth.kentkart.com/rl1/oauth/token?region=028&authType=4&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart.web.mkentkart&lang=tr", {
+                "credentials": "omit",
+                "headers": {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0",
+                    "Accept": "application/json, text/plain, */*",
+                    "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
+                    "Content-Type": "application/json",
+                    "Sec-Fetch-Dest": "empty",
+                    "Sec-Fetch-Mode": "cors",
+                    "Sec-Fetch-Site": "same-site"
+                },
+                "referrer": "https://m.kentkart.com/",
+                "body": "{\"clientId\":\"rH7S2\",\"clientSecret\":\"Om121T12fSv1j66kp9Un5vE9IMkJ3639\",\"redirectUri\":\"m.kentkart.com\",\"code\":\"" + apiKeyOluşturucuKod + "\",\"grantType\":\"authorizationCode\"}",
+                "method": "POST",
+                "mode": "cors"
+            }, 20000);
+
+            let apiKeyData = await apiOluşturucuResponse.json();
+
+            if(apiKeyData["result"]["code"] == 0) {
+                // Giriş yapıldı
+                await AsyncStorage.setItem('apiKey', apiKeyData["accessToken"]);
+                await AsyncStorage.setItem('refreshToken', apiKeyData["refreshToken"]);
+                await AsyncStorage.setItem('kartlarim', JSON.stringify([]));
+                router.replace("/");
+                setProcessing(false);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            } else {
+                setHata("Giriş bilgilerinizi doğru girdiğinizden emin olunuz.");
+                setProcessing(false);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            }
+        } catch (e: any) {
+            if (e?.name === 'AbortError') {
+                // Zaman aşımı: 20 saniyelik timeout paneli zaten gösterilecek, ek mesaj gösterme
+            } else {
+                setHata("Bağlantı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.");
+            }
             setProcessing(false);
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        } else {
-            alert("Giriş bilgilerinizi doğru girdiğinizden emin olunuz.");
-            setProcessing(false);
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
         }
     }
 
@@ -190,6 +201,9 @@ export default function Login() {
                                 <Text style={styles.buttonText}>Giriş</Text>
                             )}
                         </Pressable>
+                        {hata && (
+                            <Text style={styles.errorText}>{hata}</Text>
+                        )}
                     </View>
                     {/* Bilgilendirme modalını açan buton */}
                     <Pressable
@@ -296,6 +310,13 @@ const styles = StyleSheet.create({
     },
     buttonPressed: {
         backgroundColor: '#1565C0',
+    },
+    errorText: {
+        width: '100%',
+        marginTop: 12,
+        color: '#D32F2F',
+        fontSize: 14,
+        textAlign: 'center',
     },
     timeoutPanel: {
         position: 'absolute',

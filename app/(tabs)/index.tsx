@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTabBarVisibility } from '../../utils/TabBarVisibilityContext';
 import { fetchUcretTarifesi, Tarifeler } from '../../utils/tarifeler';
+import { fetchWithTimeout, authorizedKentkartFetch } from '../../utils/kentkartApi';
 import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Linking, Alert, Animated, Easing, TextInput, Button } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaskedTextInput } from "react-native-mask-text";
@@ -150,7 +151,7 @@ export default function HomeScreen() {
   useEffect(() => {
     async function fetchLatestVersion() {
       try {
-        const resp = await fetch("https://api.github.com/repos/swempish/gaziantepkart-client/releases/latest");
+        const resp = await fetchWithTimeout("https://api.github.com/repos/swempish/gaziantepkart-client/releases/latest");
         const data = await resp.json();
         if (data?.tag_name) {
           setEnYeniVersiyon(data.tag_name.replace(/^v/, ''));
@@ -165,21 +166,10 @@ export default function HomeScreen() {
     async function fetchProfil() {
       setProfilLoading(true);
       try {
-        const apiKey = await AsyncStorage.getItem('apiKey');
-        if (!apiKey) {
-          setProfil(null);
-          setProfilLoading(false);
-          router.push('/login');
-          return;
-        }
-        const resp = await fetch("https://service.kentkart.com/rl1/api/account?region=028&authType=4&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr", {
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Accept": "application/json, text/plain, */*",
-          },
-        });
-        const data = await resp.json();
-        if (data?.result?.code === "33") { // Token geçersiz veya oturum yok
+        const { data, tokenInvalid, noToken } = await authorizedKentkartFetch(
+          "https://service.kentkart.com/rl1/api/account?region=028&authType=4&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr"
+        );
+        if (noToken || tokenInvalid) { // Token yok/geçersiz; sessiz yenileme de başarısız oldu
           setProfil(null);
           router.push('/login');
         } else {
@@ -207,7 +197,7 @@ export default function HomeScreen() {
     async function fetchDuyurular() {
       setDuyuruLoading(true);
       try {
-        const resp = await fetch("https://service.kentkart.com/rl1/api/info/announce?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr");
+        const resp = await fetchWithTimeout("https://service.kentkart.com/rl1/api/info/announce?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr");
         const data = await resp.json();
         setDuyurular(data.announceList || []);
       } catch (e) {
@@ -269,20 +259,15 @@ export default function HomeScreen() {
       return;
     }
     try {
-      const apiKey = await AsyncStorage.getItem('apiKey');
-      if (!apiKey) {
-        setHata("Önce giriş yapmalısınız.");
+      const { data, tokenInvalid } = await authorizedKentkartFetch(
+        `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${unMaskedValue}`
+      );
+      if (tokenInvalid) { // Oturum yenilenemedi, yeniden giriş gerekli
+        setHata("Oturumunuz sona erdi. Lütfen tekrar giriş yapın.");
         setProcessing(false);
+        router.push('/login');
         return;
       }
-      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${unMaskedValue}`;
-      const resp = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Accept": "application/json, text/plain, */*",
-        },
-      });
-      const data = await resp.json();
       if (!data.cardlist || !data.cardlist[0]) {
         setHata("Kart bulunamadı veya geçersiz.");
         setProcessing(false);
@@ -336,20 +321,14 @@ export default function HomeScreen() {
     setYeniKartLoading(true);
     try {
       // Kartı API ile sorgula
-      const apiKey = await AsyncStorage.getItem('apiKey');
-      if (!apiKey) {
-        setYeniKartHata("Önce giriş yapmalısınız.");
+      const { data, tokenInvalid } = await authorizedKentkartFetch(
+        `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${yeniKartNo}`
+      );
+      if (tokenInvalid) { // Oturum yenilenemedi, yeniden giriş gerekli
+        setYeniKartHata("Oturumunuz sona erdi. Lütfen tekrar giriş yapın.");
         setYeniKartLoading(false);
         return;
       }
-      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${yeniKartNo}`;
-      const resp = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Accept": "application/json, text/plain, */*",
-        },
-      });
-      const data = await resp.json();
       if (!data.cardlist || !data.cardlist[0]) {
         setYeniKartHata("Kart bulunamadı veya geçersiz.");
         setYeniKartLoading(false);
@@ -392,17 +371,11 @@ export default function HomeScreen() {
   async function guncelleKartBilgi(id: string, kartNo: string) {
     setGuncellenenKartId(id);
     try {
-      const apiKey = await AsyncStorage.getItem('apiKey');
-      if (!apiKey) return;
-      const url = `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${kartNo}`;
-      const resp = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Accept": "application/json, text/plain, */*",
-        },
-      });
-      const data = await resp.json();
-      if (!data.cardlist || !data.cardlist[0]) return;
+      const { data } = await authorizedKentkartFetch(
+        `https://service.kentkart.com/rl1/api/card/balance?region=028&version=Web_1.7.2(24)_1.0_FIREFOX_kentkart&lang=tr&authType=4&alias=${kartNo}`
+      );
+      // Oturum geçersizse (tokenInvalid) sessizce geç; kart güncellenmez
+      if (!data?.cardlist || !data.cardlist[0]) return;
       const kart = data.cardlist[0];
       const usage = kart.usage || [];
       let bekleyenDolumMesaj: string | null = null;

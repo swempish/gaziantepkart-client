@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useLayoutEffect } from 'react';
+import React, { useEffect, useState, useLayoutEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   View, 
@@ -11,10 +11,12 @@ import {
   TextInput,
   Modal,
   Alert,
+  AppState,
   Animated, // Animasyon için ekledik
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchWithTimeout } from '../../utils/kentkartApi';
 // Görsel zenginlik katmak için ikonları import ediyoruz
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons'; 
 
@@ -46,7 +48,8 @@ export default function DurakDetayScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [favoriteName, setFavoriteName] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
-  const pulseAnimation = new Animated.Value(1); // Animasyon için state
+  // Animasyon değeri bileşen ömrü boyunca sabittir; render'da yeniden oluşturulmaz
+  const [pulseAnimation] = useState(() => new Animated.Value(1));
 
   // Veri çekme mantığını ayrı bir fonksiyona taşıyalım
   const fetchData = (isInitialLoad = false) => {
@@ -57,7 +60,7 @@ export default function DurakDetayScreen() {
     
     if (!stopId) return;
 
-    fetch(
+    fetchWithTimeout(
       `https://service.kentkart.com/rl1/web/nearest/bus?region=028&lang=tr&authType=4&accuracy=0&lat=0&lng=0&busStopId=${stopId}`,
       {
         credentials: 'omit',
@@ -74,7 +77,8 @@ export default function DurakDetayScreen() {
         referrer: 'https://online.gaziantepkart.com.tr/',
         method: 'GET',
         mode: 'cors',
-      }
+      },
+      15000
     )
       .then((res) => res.json())
       .then((json) => {
@@ -159,12 +163,29 @@ export default function DurakDetayScreen() {
     });
   }, [data, navigation, isFavorite]);
 
+  // Uygulama arka plana alındığında yoklama durur, ön plana dönünce veri tazelenir
+  const appStateRef = useRef(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (durum) => {
+      const onceki = appStateRef.current;
+      appStateRef.current = durum;
+      if (onceki !== 'active' && durum === 'active') {
+        fetchData(false); // Ön plana dönünce hemen tazele
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     checkFavoriteStatus();
     fetchData(true); // İlk yükleme
 
     const interval = setInterval(() => {
-      fetchData(false); // Periyodik güncelleme
+      // Uygulama arka plandayken gereksiz istek yapma
+      if (appStateRef.current === 'active') {
+        fetchData(false); // Periyodik güncelleme
+      }
     }, 5000); // 5 saniyede bir
 
     return () => clearInterval(interval); // Component unmount olduğunda interval'i temizle

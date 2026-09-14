@@ -42,18 +42,28 @@ export function getLeafletHtml(params: {
       // Otobüs markerlarını global bir objede tutuyoruz
       var busMarkersMap = {};
 
-      // Otobüs markerlarını oluştur/güncelle
+      // Otobüs markerlarını oluştur/güncelle (var olanları yeniden oluşturmak yerine taşı)
       function updateBusMarkers(buses) {
-        // Mevcut markerları temizle
-        Object.values(busMarkersMap).forEach(marker => marker.remove());
-        busMarkersMap = {};
-
-        // Yeni markerları ekle
-        buses.forEach(bus => {
-          const marker = L.marker([bus.lat, bus.lng], {icon: busIcon})
-            .bindPopup('<b>' + bus.plateNumber + '</b><br>' + bus.busLabel);
-          marker.addTo(map);
-          busMarkersMap[bus.busId] = marker;
+        var guncelIdler = {};
+        (buses || []).forEach(function (bus) {
+          var mevcut = busMarkersMap[bus.busId];
+          if (mevcut) {
+            // Mevcut marker'ı yeni konuma taşı (titreme olmaz)
+            mevcut.setLatLng([bus.lat, bus.lng]);
+          } else {
+            var marker = L.marker([bus.lat, bus.lng], {icon: busIcon})
+              .bindPopup('<b>' + bus.plateNumber + '</b><br>' + bus.busLabel);
+            marker.addTo(map);
+            busMarkersMap[bus.busId] = marker;
+          }
+          guncelIdler[bus.busId] = true;
+        });
+        // Güncel listede artık olmayan araçların markerlarını kaldır
+        Object.keys(busMarkersMap).forEach(function (id) {
+          if (!guncelIdler[id]) {
+            busMarkersMap[id].remove();
+            delete busMarkersMap[id];
+          }
         });
       }
 
@@ -72,10 +82,10 @@ export function getLeafletHtml(params: {
         map.setView([${mapCenter.lat},${mapCenter.lng}], ${mapCenter.zoom});
       }
 
-      // WebView'dan gelen mesajları dinle
-      function handleWebViewMessage(event) {
+      // WebView'dan gelen mesajları dinle (tek dinleyici: updateBuses + zoomToBus)
+      function handleMessage(event) {
         try {
-          const data = JSON.parse(event.data);
+          var data = JSON.parse(event.data);
           if (data.type === 'updateBuses') {
             updateBusMarkers(data.buses);
           } else if (data.type === 'zoomToBus' && typeof data.lat === 'number' && typeof data.lng === 'number') {
@@ -86,28 +96,14 @@ export function getLeafletHtml(params: {
         }
       }
 
-      // Android/iOS WebView mesaj dinleyicileri
-      document.addEventListener('message', handleWebViewMessage);
-      window.addEventListener('message', handleWebViewMessage);
-
       function postStopMessage(stopId) {
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navigateToStop', stopId: stopId }));
         }
       }
 
-      // WebView'dan gelen mesajı dinle (React Native -> Leaflet)
-      function handleMessage(event) {
-        try {
-          var data = JSON.parse(event.data);
-          if (data.type === 'zoomToBus' && typeof data.lat === 'number' && typeof data.lng === 'number') {
-            map.setView([data.lat, data.lng], 17, { animate: true });
-          }
-        } catch (e) {}
-      }
-      // Android/iOS WebView
+      // Android WebView 'document' üzerinden, iOS 'window' üzerinden mesaj gönderir
       document.addEventListener('message', handleMessage);
-      // iOS WebView (window.ReactNativeWebView)
       window.addEventListener('message', handleMessage);
     </script>
   </body>

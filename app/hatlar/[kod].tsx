@@ -6,6 +6,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { getLeafletHtml } from '../../utils/leafletHtml';
+import { fetchWithTimeout } from '../../utils/kentkartApi';
 import { TextInput } from 'react-native-gesture-handler';
 
 const themeColors = {
@@ -90,8 +91,10 @@ export default function HatDetayScreen() {
     const fetchBusLocations = async () => {
       setLiveStatus('updating');
       try {
-        const res = await fetch(
+        const res = await fetchWithTimeout(
           `https://service.kentkart.com/rl1/web/pathInfo?region=028&lang=tr&authType=4&direction=${direction}&displayRouteCode=${encodeURIComponent(String(kod))}&resultType=111111`,
+          {},
+          15000
         );
         if (!res.ok) return; // Hata durumunda kırmızı kalır
         const json = await res.json();
@@ -125,7 +128,7 @@ export default function HatDetayScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://service.kentkart.com/rl1/web/pathInfo?region=028&lang=tr&authType=4&direction=${direction}&displayRouteCode=${encodeURIComponent(String(kod))}&resultType=111111`,
         {
           credentials: "omit",
@@ -142,7 +145,8 @@ export default function HatDetayScreen() {
           referrer: "https://online.gaziantepkart.com.tr/",
           method: "GET",
           mode: "cors",
-        }
+        },
+        15000
       );
       if (!res.ok) throw new Error("API hatası");
       const json = await res.json();
